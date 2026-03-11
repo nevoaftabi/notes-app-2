@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import type { Note } from "./note";
+import { NoteForm } from "./schemas";
+import { z } from 'zod';
 
 type CreateNoteProps = {
   setMode: React.Dispatch<React.SetStateAction<Mode>>;
@@ -7,6 +9,8 @@ type CreateNoteProps = {
   createNote: () => void;
   setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
   resetNoteInput: () => void;
+  errors: string;
+  setErrors: React.Dispatch<React.SetStateAction<string>>;
 };
 
 type EditNoteProps = CreateNoteProps & {
@@ -14,6 +18,7 @@ type EditNoteProps = CreateNoteProps & {
   currentNote: Note;
   submitNoteEdit: () => void;
   setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
+  setErrors: React.Dispatch<React.SetStateAction<string>>;
 };
 
 type NotesProps = {
@@ -25,27 +30,33 @@ type NotesProps = {
 
 type Mode = "home" | "edit" | "create";
 
+// Add autosave
+
 function CreateNote({
   setMode,
   currentNote,
   setCurrentNote,
   resetNoteInput,
   createNote,
+  setErrors,
+  errors,
 }: CreateNoteProps) {
   return (
     <div>
       <label htmlFor="">Subject</label>
       <input
         type="text"
-        onChange={(e) =>
+        onChange={(e) => {
           setCurrentNote({ ...currentNote, subject: e.target.value })
-        }
+          setErrors("");
+        }}
         value={currentNote.subject}
       />
       <button
         onClick={() => {
           setMode("home");
           resetNoteInput();
+          setErrors("");
         }}
       >
         Back
@@ -57,14 +68,16 @@ function CreateNote({
         name=""
         id=""
         style={{ width: 200, height: 200 }}
-        onChange={(e) =>
+        onChange={(e) => {
           setCurrentNote({ ...currentNote, body: e.target.value })
-        }
+          setErrors("");
+        }}
         value={currentNote.body}
       ></textarea>
       <br />
       <br />
       <button onClick={() => createNote()}>Submit</button>
+      <div>{errors}</div>
     </div>
   );
 }
@@ -76,6 +89,7 @@ function EditNote({
   notes,
   setCurrentNote,
   submitNoteEdit,
+  setErrors
 }: EditNoteProps) {
   useEffect(() => {
     const note = notes.find((note) => note.id === currentNote.id);
@@ -100,6 +114,7 @@ function EditNote({
         onClick={() => {
           setMode("home");
           resetNoteInput();
+          setErrors("");
         }}
       >
         Back
@@ -172,6 +187,7 @@ function App() {
       return [];
     }
   });
+  const [errors, setErrors] = useState("");
 
   useEffect(() => {
     try {
@@ -186,20 +202,19 @@ function App() {
   }
 
   function createNote() {
-    const trimmedSubject = currentNote?.subject.trim();
-    const trimmedBody = currentNote?.body.trim();
-
-    resetNoteInput();
-
-    if (!trimmedSubject || !trimmedBody) {
-      alert("Subject or body is missing.");
-
+    const parsedNote = NoteForm.safeParse(currentNote);
+    
+    if(!parsedNote.success) {
+      const pretty = z.prettifyError(parsedNote.error);
+      setErrors(pretty);
       return;
     }
 
+    resetNoteInput();
+
     setNotes([
       ...notes,
-      { id: crypto.randomUUID(), subject: trimmedSubject, body: trimmedBody },
+      { id: crypto.randomUUID(), subject: parsedNote.data.subject, body: parsedNote.data.body },
     ]);
     setMode("home");
     resetNoteInput();
@@ -221,6 +236,8 @@ function App() {
     <>
       {mode === "create" && (
         <CreateNote
+          setErrors={setErrors}
+          errors={errors}
           setCurrentNote={setCurrentNote}
           createNote={createNote}
           currentNote={currentNote}
@@ -230,6 +247,8 @@ function App() {
       )}
       {mode === "edit" && (
         <EditNote
+          setErrors={setErrors}
+          errors={errors}
           createNote={createNote}
           currentNote={currentNote}
           notes={notes}
