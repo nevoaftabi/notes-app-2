@@ -1,0 +1,25 @@
+import dotenv from "dotenv";
+dotenv.config();
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required env var: ${name}`);
+  return value;
+}
+
+function envOr(name: string, fallback: string): string {
+  return process.env[name] ?? fallback;
+}
+
+function intOr(name: string, fallback: number): number {
+  const raw = process.env[name];
+  const n = raw ? Number(raw) : fallback;
+  return Number.isFinite(n) ? n : fallback;
+}
+
+export const env = {
+  PORT: requireEnv("PORT"),
+  CLERK_SECRET_KEY: requireEnv("CLERK_SECRET_KEY"),
+  DATABASE_URL: requireEnv("DATABASE_URL"),
+  NODE_ENV: requireEnv("NODE_ENV")
+};

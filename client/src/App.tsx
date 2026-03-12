@@ -1,7 +1,17 @@
+// TODO:
+// Add loading text
+// Add autosave
+// Make createTodo optimistic
+// Make delete optimistic
+// Make the edit button work & edit route
+// When a user is deleted, all of their notes also have to be deleted
+// Optimizations/bug fixes
+
 import { useState, useEffect } from "react";
 import type { Note } from "./note";
 import { NoteForm } from "./schemas";
-import { z } from 'zod';
+import { z } from "zod";
+import { useAuth } from "@clerk/clerk-react";
 
 type CreateNoteProps = {
   setMode: React.Dispatch<React.SetStateAction<Mode>>;
@@ -22,6 +32,7 @@ type EditNoteProps = CreateNoteProps & {
 };
 
 type NotesProps = {
+  loadingMessage: string;
   setMode: React.Dispatch<React.SetStateAction<Mode>>;
   notes: Note[];
   setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
@@ -47,7 +58,7 @@ function CreateNote({
       <input
         type="text"
         onChange={(e) => {
-          setCurrentNote({ ...currentNote, subject: e.target.value })
+          setCurrentNote({ ...currentNote, subject: e.target.value });
           setErrors("");
         }}
         value={currentNote.subject}
@@ -69,7 +80,7 @@ function CreateNote({
         id=""
         style={{ width: 200, height: 200 }}
         onChange={(e) => {
-          setCurrentNote({ ...currentNote, body: e.target.value })
+          setCurrentNote({ ...currentNote, body: e.target.value });
           setErrors("");
         }}
         value={currentNote.body}
@@ -89,7 +100,7 @@ function EditNote({
   notes,
   setCurrentNote,
   submitNoteEdit,
-  setErrors
+  setErrors,
 }: EditNoteProps) {
   useEffect(() => {
     const note = notes.find((note) => note.id === currentNote.id);
@@ -138,10 +149,18 @@ function EditNote({
   );
 }
 
-function Notes({ notes, setMode, deleteNote, setCurrentNote }: NotesProps) {
+function Notes({
+  notes,
+  setMode,
+  deleteNote,
+  setCurrentNote,
+  loadingMessage,
+}: NotesProps) {
   return (
     <div>
-      <button onClick={() => setMode("create")}>Create Note</button>
+      <button disabled={!!loadingMessage} onClick={() => setMode("create")}>
+        Create Note
+      </button>
       {notes.length ? (
         notes.map((note) => (
           <div key={note.id}>
@@ -160,7 +179,7 @@ function Notes({ notes, setMode, deleteNote, setCurrentNote }: NotesProps) {
           </div>
         ))
       ) : (
-        <div>No notes exist!</div>
+        <div>{loadingMessage ? loadingMessage : "No notes exist!"}</div>
       )}
     </div>
   );
@@ -168,68 +187,151 @@ function Notes({ notes, setMode, deleteNote, setCurrentNote }: NotesProps) {
 
 function App() {
   const [mode, setMode] = useState<Mode>("home");
+  const { userId, sessionId, getToken, isLoaded, isSignedIn } = useAuth();
+  const [loadingMessage, setLoadingMessage] = useState("Loading...");
   const [currentNote, setCurrentNote] = useState<Note>({
     id: "",
     subject: "",
     body: "",
   });
-  const [notes, setNotes] = useState<Note[]>(() => {
-    try {
-      const raw = localStorage.getItem("notes");
+  const [notes, setNotes] = useState<Note[]>([]);
+  useEffect(() => {
+    const fetchData = async () => {
+      const token = await getToken();
 
-      if (raw === null) return [];
+      try {
+        const res = await fetch("http://localhost:3000/api/auth/notes", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-      const parsed = JSON.parse(raw);
+        if (!res.ok) {
+          setLoadingMessage("Failed to fetch");
+          return;
+        } else {
+          setLoadingMessage("");
+        }
 
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (error) {
-      console.log(error);
-      return [];
-    }
-  });
+        const json = await res.json();
+        setNotes(json.rows);
+      } catch (error) {
+        setLoadingMessage("Failed to fetch");
+        console.log(error);
+      }
+    };
+
+    fetchData();
+  }, []);
   const [errors, setErrors] = useState("");
 
-  useEffect(() => {
+  async function deleteNote(noteId: string) {
     try {
-      localStorage.setItem("notes", JSON.stringify(notes));
-    } catch (error) {
-      alert("Couldn't save changes. Try again later. " + error);
-    }
-  }, [notes]);
+      const token = await getToken();
+      const result = await fetch(
+        `http://localhost:3000/api/auth/notes/${encodeURIComponent(noteId)}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
-  function deleteNote(noteId: string) {
-    setNotes((notes) => notes.filter((note) => note.id !== noteId));
+      if (result.ok) {
+        setNotes((notes) => notes.filter((note) => note.id !== noteId));
+      }
+    } catch (error) {
+      console.log(error);
+    }
   }
 
-  function createNote() {
+  async function createNote() {
     const parsedNote = NoteForm.safeParse(currentNote);
-    
-    if(!parsedNote.success) {
-      const pretty = z.prettifyError(parsedNote.error);
-      setErrors(pretty);
+
+    if (!parsedNote.success) {
+      setErrors(z.prettifyError(parsedNote.error));
       return;
     }
 
-    resetNoteInput();
+    const { subject, body } = parsedNote.data;
 
-    setNotes([
-      ...notes,
-      { id: crypto.randomUUID(), subject: parsedNote.data.subject, body: parsedNote.data.body },
-    ]);
-    setMode("home");
-    resetNoteInput();
+    try {
+      const token = await getToken();
+      const result = await fetch("http://localhost:3000/api/auth/notes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          subject,
+          body,
+        }),
+      });
+
+      if (!result.ok) {
+        alert("Couldn't create the note");
+        return;
+      }
+
+      const json = await result.json();
+      console.log(json);
+
+      resetNoteInput();
+      setMode("home");
+
+      setNotes([
+        ...notes,
+        {
+          id: json.noteId,
+          subject,
+          body,
+        },
+      ]);
+    } catch (error) {
+      alert("Couldn't create the note");
+    }
   }
 
-  function submitNoteEdit() {
-    setNotes((notes) =>
-      notes.map((note) => (currentNote.id === note.id ? currentNote : note)),
-    );
-    resetNoteInput();
-    setMode("home");
+  async function submitNoteEdit() {
+    try {
+      const token = await getToken();
+      const result = await fetch(
+        `http://localhost:3000/api/auth/notes/${encodeURIComponent(currentNote.id)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            subject: currentNote.subject,
+            body: currentNote.body,
+          }),
+        },
+      );
+
+      if (!result.ok) {
+        alert("Couldn't update note");
+        return;
+      }
+
+      setNotes((notes) =>
+        notes.map((note) => (currentNote.id === note.id ? currentNote : note)),
+      );
+      resetNoteInput();
+      setMode("home");
+    } catch (error) {
+      alert("Couldn't update note");
+    }
   }
 
   function resetNoteInput() {
-    setCurrentNote({ id: "", subject: "", body: ""});
+    setCurrentNote({ id: "", subject: "", body: "" });
   }
 
   return (
@@ -260,6 +362,7 @@ function App() {
       )}
       {mode === "home" && (
         <Notes
+          loadingMessage={loadingMessage}
           deleteNote={deleteNote}
           setCurrentNote={setCurrentNote}
           setMode={setMode}
