@@ -3,3 +3,5 @@ export type Note = {
   subject: string;
   body: string;
 };
+
+export type Mode = "home" | "edit" | "create";

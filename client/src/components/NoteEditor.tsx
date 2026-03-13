@@ -1,7 +1,6 @@
-import type { Mode } from "../App";
-import type { Note } from '../note';
+import type { Mode, Note } from "../types";
 
-export type CreateNoteProps = {
+type NoteEditorProps = {
   setMode: React.Dispatch<React.SetStateAction<Mode>>;
   currentNote: Note;
   createNote: () => void;
@@ -9,26 +8,30 @@ export type CreateNoteProps = {
   resetCurrentNote: () => void;
   errors: string;
   setErrors: React.Dispatch<React.SetStateAction<string>>;
+  editNote: () => void;
+  mode: string;
 };
 
-function CreateNote({
+function NoteEditor({
   setMode,
+  resetCurrentNote,
   currentNote,
   setCurrentNote,
-  resetCurrentNote,
+  editNote,
   createNote,
   setErrors,
   errors,
-}: CreateNoteProps) {
+  mode,
+}: NoteEditorProps) {
+  console.log('here');
   return (
     <div>
       <label htmlFor="">Subject</label>
       <input
         type="text"
-        onChange={(e) => {
-          setCurrentNote({ ...currentNote, subject: e.target.value });
-          setErrors("");
-        }}
+        onChange={(e) =>
+          setCurrentNote({ ...currentNote, subject: e.target.value })
+        }
         value={currentNote.subject}
       />
       <button
@@ -47,18 +50,24 @@ function CreateNote({
         name=""
         id=""
         style={{ width: 200, height: 200 }}
-        onChange={(e) => {
-          setCurrentNote({ ...currentNote, body: e.target.value });
-          setErrors("");
-        }}
+        onChange={(e) =>
+          setCurrentNote({ ...currentNote, body: e.target.value })
+        }
         value={currentNote.body}
       ></textarea>
       <br />
       <br />
-      <button onClick={() => createNote()}>Submit</button>
+      <button onClick={() => { 
+        if(mode === "edit") {
+          editNote();
+        }
+        else if(mode === "create") {
+          createNote();
+        }
+      }}>Submit</button>
       <div>{errors}</div>
     </div>
   );
 }
 
-export default CreateNote;
+export default NoteEditor;

@@ -5,16 +5,21 @@
 // Optimizations/bug fixes
 
 import { useState, useEffect } from "react";
-import type { Note } from "./note";
+import type { Note } from "./types";
 import { NoteForm } from "./schemas";
-import { parse, z } from "zod";
+import { z } from "zod";
 import { useAuth } from "@clerk/clerk-react";
-import { authFetch, createNoteRequest, deleteNoteRequest, fetchNotes, updateNoteRequest } from "./api";
-import CreateNote from './components/CreateNote'
+import type { Mode } from "./types";
+import {
+  createNoteRequest,
+  deleteNoteRequest,
+  fetchNotes,
+  updateNoteRequest,
+} from "./api";
+import CreateNote from "./components/CreateNote";
 import EditNote from "./components/EditNote";
 import Notes from "./components/Note";
-
-export type Mode = "home" | "edit" | "create";
+import NoteEditor from "./components/NoteEditor";
 
 function App() {
   const [mode, setMode] = useState<Mode>("home");
@@ -58,8 +63,7 @@ function App() {
             setLoadingMessage("Failed to fetch");
           }
           return;
-        } 
-        else if (!cancelled) {
+        } else if (!cancelled) {
           setLoadingMessage("");
         }
 
@@ -108,7 +112,11 @@ function App() {
     }
 
     try {
-      const result = await createNoteRequest(token!, parsedNote.data.subject, parsedNote.data.body);
+      const result = await createNoteRequest(
+        token!,
+        parsedNote.data.subject,
+        parsedNote.data.body,
+      );
 
       if (!result.ok) {
         alert("Couldn't create the note");
@@ -143,7 +151,11 @@ function App() {
 
     try {
       const token = await getToken();
-      const result = await updateNoteRequest(token!, { id: currentNote.id, subject: parsedNote.data.subject, body: parsedNote.data.body});
+      const result = await updateNoteRequest(token!, {
+        id: currentNote.id,
+        subject: parsedNote.data.subject,
+        body: parsedNote.data.body,
+      });
 
       if (!result.ok) {
         alert("Couldn't update note");
@@ -168,7 +180,7 @@ function App() {
   return (
     <>
       {mode === "create" && (
-        <CreateNote
+        <NoteEditor
           setErrors={setErrors}
           errors={errors}
           setCurrentNote={setCurrentNote}
@@ -176,18 +188,21 @@ function App() {
           currentNote={currentNote}
           resetCurrentNote={resetCurrentNote}
           setMode={setMode}
+          editNote={editNote}
+          mode={mode}
         />
       )}
       {mode === "edit" && (
-        <EditNote
+        <NoteEditor
           setErrors={setErrors}
           errors={errors}
+          setCurrentNote={setCurrentNote}
           createNote={createNote}
           currentNote={currentNote}
           resetCurrentNote={resetCurrentNote}
-          setCurrentNote={setCurrentNote}
           setMode={setMode}
           editNote={editNote}
+          mode={mode}
         />
       )}
       {mode === "home" && (

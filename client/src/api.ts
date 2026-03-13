@@ -1,4 +1,4 @@
-import type { Note } from "./note";
+import type { Note } from "./types";
 
 export async function authFetch(
   url: string,
@@ -46,14 +46,14 @@ export async function updateNoteRequest(token: string, note: Note) {
     `http://localhost:3000/api/auth/notes/${encodeURIComponent(note.id)}`,
     "PATCH",
     token!,
-    JSON.stringify({...note}),
+    JSON.stringify({ ...note }),
   );
 }
 
 export async function deleteNoteRequest(token: string, noteId: string) {
-    return authFetch(
-      `http://localhost:3000/api/auth/notes/${encodeURIComponent(noteId)}`,
-      "DELETE",
-      token!,
-    );
+  return authFetch(
+    `http://localhost:3000/api/auth/notes/${encodeURIComponent(noteId)}`,
+    "DELETE",
+    token!,
+  );
 }

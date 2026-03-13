@@ -1,5 +1,5 @@
-import type { Mode } from "../App";
-import type { Note } from "../note";
+import type { Mode } from "../types";
+import type { Note } from "../types";
 
 type NotesProps = {
   loadingMessage: string;
