@@ -1,9 +1,6 @@
 // TODO:
-// Add loading text
 // Add autosave
-// Make createTodo optimistic
 // Make delete optimistic
-// Make the edit button work & edit route
 // When a user is deleted, all of their notes also have to be deleted
 // Optimizations/bug fixes
 
@@ -102,15 +99,8 @@ function EditNote({
   submitNoteEdit,
   setErrors,
 }: EditNoteProps) {
-  useEffect(() => {
-    const note = notes.find((note) => note.id === currentNote.id);
 
-    if (note?.subject && note?.body) {
-      setCurrentNote({ ...note, subject: note.subject, body: note.body });
-    } else {
-      alert("Couldn't find the note you wanted to edit");
-    }
-  }, []);
+
   return (
     <div>
       <label htmlFor="">Subject</label>
@@ -169,7 +159,7 @@ function Notes({
               <button onClick={() => deleteNote(note.id)}>Delete</button>
               <button
                 onClick={() => {
-                  setCurrentNote({ id: note.id, subject: "", body: "" });
+                  setCurrentNote(note);
                   setMode("edit");
                 }}
               >
@@ -187,7 +177,7 @@ function Notes({
 
 function App() {
   const [mode, setMode] = useState<Mode>("home");
-  const { userId, sessionId, getToken, isLoaded, isSignedIn } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
   const [currentNote, setCurrentNote] = useState<Note>({
     id: "",
@@ -196,10 +186,29 @@ function App() {
   });
   const [notes, setNotes] = useState<Note[]>([]);
   useEffect(() => {
+    if (!isLoaded) {
+      return;
+    }
+
+    if (!isSignedIn) {
+      setNotes([]);
+      setLoadingMessage("Please sign in");
+      return;
+    }
+
+    let cancelled = false;
+
     const fetchData = async () => {
       const token = await getToken();
 
       try {
+        if (!token) {
+          if (!cancelled) {
+            setLoadingMessage("Failed to fetch");
+          }
+          return;
+        }
+
         const res = await fetch("http://localhost:3000/api/auth/notes", {
           method: "GET",
           headers: {
@@ -209,22 +218,32 @@ function App() {
         });
 
         if (!res.ok) {
-          setLoadingMessage("Failed to fetch");
+          if (!cancelled) {
+            setLoadingMessage("Failed to fetch");
+          }
           return;
-        } else {
+        } else if (!cancelled) {
           setLoadingMessage("");
         }
 
         const json = await res.json();
-        setNotes(json.rows);
+        if (!cancelled) {
+          setNotes(json.rows);
+        }
       } catch (error) {
-        setLoadingMessage("Failed to fetch");
+        if (!cancelled) {
+          setLoadingMessage("Failed to fetch");
+        }
         console.log(error);
       }
     };
 
     fetchData();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getToken, isLoaded, isSignedIn]);
   const [errors, setErrors] = useState("");
 
   async function deleteNote(noteId: string) {
@@ -243,6 +262,9 @@ function App() {
 
       if (result.ok) {
         setNotes((notes) => notes.filter((note) => note.id !== noteId));
+      }
+      else {
+        alert("Couldn't delete note");
       }
     } catch (error) {
       console.log(error);
@@ -279,18 +301,13 @@ function App() {
       }
 
       const json = await result.json();
-      console.log(json);
 
       resetNoteInput();
       setMode("home");
 
-      setNotes([
+      setNotes((notes) => [
         ...notes,
-        {
-          id: json.noteId,
-          subject,
-          body,
-        },
+        { id: json.noteId, subject, body }
       ]);
     } catch (error) {
       alert("Couldn't create the note");
