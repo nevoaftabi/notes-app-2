@@ -9,6 +9,7 @@ import type { Note } from "./note";
 import { NoteForm } from "./schemas";
 import { z } from "zod";
 import { useAuth } from "@clerk/clerk-react";
+import { authFetch } from "./api";
 
 type CreateNoteProps = {
   setMode: React.Dispatch<React.SetStateAction<Mode>>;
@@ -24,7 +25,7 @@ type EditNoteProps = CreateNoteProps & {
   currentNote: Note;
   editNote: () => void;
   setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
-  setErrors: React.Dispatch<React.SetStateAction<string>>,
+  setErrors: React.Dispatch<React.SetStateAction<string>>;
   errors: string;
 };
 
@@ -99,7 +100,6 @@ function EditNote({
   setErrors,
   errors,
 }: EditNoteProps) {
-
   return (
     <div>
       <label htmlFor="">Subject</label>
@@ -209,13 +209,11 @@ function App() {
           return;
         }
 
-        const res = await fetch("http://localhost:3000/api/auth/notes", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await authFetch(
+          "http://localhost:3000/api/auth/notes",
+          "GET",
+          token!,
+        );
 
         if (!res.ok) {
           if (!cancelled) {
@@ -249,21 +247,15 @@ function App() {
   async function deleteNote(noteId: string) {
     try {
       const token = await getToken();
-      const result = await fetch(
+      const result = await authFetch(
         `http://localhost:3000/api/auth/notes/${encodeURIComponent(noteId)}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        },
+        "DELETE",
+        token!,
       );
 
       if (result.ok) {
         setNotes((notes) => notes.filter((note) => note.id !== noteId));
-      }
-      else {
+      } else {
         alert("Couldn't delete note");
       }
     } catch (error) {
@@ -279,21 +271,18 @@ function App() {
       return;
     }
 
-    const { subject, body } = parsedNote.data;
-
     try {
       const token = await getToken();
-      const result = await fetch("http://localhost:3000/api/auth/notes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          subject,
-          body,
+
+      const result = await authFetch(
+        "http://localhost:3000/api/auth/notes",
+        "POST",
+        token!,
+        JSON.stringify({
+          subject: parsedNote.data.subject,
+          body: parsedNote.data.body,
         }),
-      });
+      );
 
       if (!result.ok) {
         alert("Couldn't create the note");
@@ -307,36 +296,36 @@ function App() {
 
       setNotes((notes) => [
         ...notes,
-        { id: json.noteId, subject, body }
+        {
+          id: json.noteId,
+          subject: parsedNote.data.subject,
+          body: parsedNote.data.body,
+        },
       ]);
     } catch (error) {
       alert("Couldn't create the note");
     }
   }
-  
+
   async function editNote() {
     const parsedNote = NoteForm.safeParse(currentNote);
 
-    if(!parsedNote.success) {
+    if (!parsedNote.success) {
       setErrors(z.prettifyError(parsedNote.error));
       return;
     }
 
     try {
       const token = await getToken();
-      const result = await fetch(
+
+      const result = await authFetch(
         `http://localhost:3000/api/auth/notes/${encodeURIComponent(currentNote.id)}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            subject: parsedNote.data.subject,
-            body: parsedNote.data.body,
-          }),
-        },
+        "PATCH",
+        token!,
+        JSON.stringify({
+          subject: parsedNote.data.subject,
+          body: parsedNote.data.body,
+        }),
       );
 
       if (!result.ok) {
@@ -347,7 +336,7 @@ function App() {
       setNotes((notes) =>
         notes.map((note) => (currentNote.id === note.id ? currentNote : note)),
       );
-      
+
       resetNoteInput();
       setMode("home");
     } catch (error) {
