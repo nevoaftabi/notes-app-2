@@ -24,7 +24,7 @@ function Notes({
       </button>
       {notes.length ? (
         notes.map((note) => (
-          <NoteItem key={note.id} deleteNote={deleteNote} loadingMessage={loadingMessage} note={note} setCurrentNote={setCurrentNote} setMode={setMode} />
+          <NoteItem key={note.id} deleteNote={deleteNote} note={note} setCurrentNote={setCurrentNote} setMode={setMode} />
         ))
       ) : (
         <div>{loadingMessage ? loadingMessage : "No notes exist!"}</div>

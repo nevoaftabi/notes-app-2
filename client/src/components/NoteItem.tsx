@@ -1,9 +1,7 @@
-import React from "react";
 import type { Mode, Note } from "../types";
 
 type NoteItemProps = {
   note: Note;
-  loadingMessage: string;
   setMode: React.Dispatch<React.SetStateAction<Mode>>;
   setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
   deleteNote: (noteId: string) => void;
