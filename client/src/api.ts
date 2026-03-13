@@ -1,6 +1,4 @@
-import { getToken } from "@clerk/react";
-
-async function authFetch(url: string, method: string, authToken: string, body?: string) {
+export async function authFetch(url: string, method: string, authToken: string, body?: string) {
     const options: RequestInit = {
         method,
         headers: {

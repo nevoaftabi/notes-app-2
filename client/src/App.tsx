@@ -21,11 +21,11 @@ type CreateNoteProps = {
 };
 
 type EditNoteProps = CreateNoteProps & {
-  notes: Note[];
   currentNote: Note;
-  submitNoteEdit: () => void;
+  editNote: () => void;
   setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
-  setErrors: React.Dispatch<React.SetStateAction<string>>;
+  setErrors: React.Dispatch<React.SetStateAction<string>>,
+  errors: string;
 };
 
 type NotesProps = {
@@ -94,12 +94,11 @@ function EditNote({
   setMode,
   resetNoteInput,
   currentNote,
-  notes,
   setCurrentNote,
-  submitNoteEdit,
+  editNote,
   setErrors,
+  errors,
 }: EditNoteProps) {
-
 
   return (
     <div>
@@ -134,7 +133,8 @@ function EditNote({
       ></textarea>
       <br />
       <br />
-      <button onClick={() => submitNoteEdit()}>Submit</button>
+      <button onClick={() => editNote()}>Submit</button>
+      <div>{errors}</div>
     </div>
   );
 }
@@ -313,8 +313,15 @@ function App() {
       alert("Couldn't create the note");
     }
   }
+  
+  async function editNote() {
+    const parsedNote = NoteForm.safeParse(currentNote);
 
-  async function submitNoteEdit() {
+    if(!parsedNote.success) {
+      setErrors(z.prettifyError(parsedNote.error));
+      return;
+    }
+
     try {
       const token = await getToken();
       const result = await fetch(
@@ -326,8 +333,8 @@ function App() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            subject: currentNote.subject,
-            body: currentNote.body,
+            subject: parsedNote.data.subject,
+            body: parsedNote.data.body,
           }),
         },
       );
@@ -340,6 +347,7 @@ function App() {
       setNotes((notes) =>
         notes.map((note) => (currentNote.id === note.id ? currentNote : note)),
       );
+      
       resetNoteInput();
       setMode("home");
     } catch (error) {
@@ -370,11 +378,10 @@ function App() {
           errors={errors}
           createNote={createNote}
           currentNote={currentNote}
-          notes={notes}
           resetNoteInput={resetNoteInput}
           setCurrentNote={setCurrentNote}
           setMode={setMode}
-          submitNoteEdit={submitNoteEdit}
+          editNote={editNote}
         />
       )}
       {mode === "home" && (
