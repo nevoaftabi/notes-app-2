@@ -10,24 +10,10 @@ import { NoteForm } from "./schemas";
 import { z } from "zod";
 import { useAuth } from "@clerk/clerk-react";
 import { authFetch } from "./api";
+import CreateNote from './components/CreateNote'
+import EditNote from "./components/EditNote";
 
-type CreateNoteProps = {
-  setMode: React.Dispatch<React.SetStateAction<Mode>>;
-  currentNote: Note;
-  createNote: () => void;
-  setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
-  resetNoteInput: () => void;
-  errors: string;
-  setErrors: React.Dispatch<React.SetStateAction<string>>;
-};
-
-type EditNoteProps = CreateNoteProps & {
-  currentNote: Note;
-  editNote: () => void;
-  setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
-  setErrors: React.Dispatch<React.SetStateAction<string>>;
-  errors: string;
-};
+export type Mode = "home" | "edit" | "create";
 
 type NotesProps = {
   loadingMessage: string;
@@ -36,108 +22,6 @@ type NotesProps = {
   setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
   deleteNote: (noteId: string) => void;
 };
-
-type Mode = "home" | "edit" | "create";
-
-// Add autosave
-
-function CreateNote({
-  setMode,
-  currentNote,
-  setCurrentNote,
-  resetNoteInput,
-  createNote,
-  setErrors,
-  errors,
-}: CreateNoteProps) {
-  return (
-    <div>
-      <label htmlFor="">Subject</label>
-      <input
-        type="text"
-        onChange={(e) => {
-          setCurrentNote({ ...currentNote, subject: e.target.value });
-          setErrors("");
-        }}
-        value={currentNote.subject}
-      />
-      <button
-        onClick={() => {
-          setMode("home");
-          resetNoteInput();
-          setErrors("");
-        }}
-      >
-        Back
-      </button>
-      <br />
-      <br />
-      <label htmlFor="">Body</label>
-      <textarea
-        name=""
-        id=""
-        style={{ width: 200, height: 200 }}
-        onChange={(e) => {
-          setCurrentNote({ ...currentNote, body: e.target.value });
-          setErrors("");
-        }}
-        value={currentNote.body}
-      ></textarea>
-      <br />
-      <br />
-      <button onClick={() => createNote()}>Submit</button>
-      <div>{errors}</div>
-    </div>
-  );
-}
-
-function EditNote({
-  setMode,
-  resetNoteInput,
-  currentNote,
-  setCurrentNote,
-  editNote,
-  setErrors,
-  errors,
-}: EditNoteProps) {
-  return (
-    <div>
-      <label htmlFor="">Subject</label>
-      <input
-        type="text"
-        onChange={(e) =>
-          setCurrentNote({ ...currentNote, subject: e.target.value })
-        }
-        value={currentNote.subject}
-      />
-      <button
-        onClick={() => {
-          setMode("home");
-          resetNoteInput();
-          setErrors("");
-        }}
-      >
-        Back
-      </button>
-      <br />
-      <br />
-      <label htmlFor="">Body</label>
-      <textarea
-        name=""
-        id=""
-        style={{ width: 200, height: 200 }}
-        onChange={(e) =>
-          setCurrentNote({ ...currentNote, body: e.target.value })
-        }
-        value={currentNote.body}
-      ></textarea>
-      <br />
-      <br />
-      <button onClick={() => editNote()}>Submit</button>
-      <div>{errors}</div>
-    </div>
-  );
-}
 
 function Notes({
   notes,
@@ -291,7 +175,7 @@ function App() {
 
       const json = await result.json();
 
-      resetNoteInput();
+      resetCurrentNote();
       setMode("home");
 
       setNotes((notes) => [
@@ -337,14 +221,14 @@ function App() {
         notes.map((note) => (currentNote.id === note.id ? currentNote : note)),
       );
 
-      resetNoteInput();
+      resetCurrentNote();
       setMode("home");
     } catch (error) {
       alert("Couldn't update note");
     }
   }
 
-  function resetNoteInput() {
+  function resetCurrentNote() {
     setCurrentNote({ id: "", subject: "", body: "" });
   }
 
@@ -357,7 +241,7 @@ function App() {
           setCurrentNote={setCurrentNote}
           createNote={createNote}
           currentNote={currentNote}
-          resetNoteInput={resetNoteInput}
+          resetCurrentNote={resetCurrentNote}
           setMode={setMode}
         />
       )}
@@ -367,7 +251,7 @@ function App() {
           errors={errors}
           createNote={createNote}
           currentNote={currentNote}
-          resetNoteInput={resetNoteInput}
+          resetCurrentNote={resetCurrentNote}
           setCurrentNote={setCurrentNote}
           setMode={setMode}
           editNote={editNote}
