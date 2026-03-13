@@ -7,57 +7,14 @@
 import { useState, useEffect } from "react";
 import type { Note } from "./note";
 import { NoteForm } from "./schemas";
-import { z } from "zod";
+import { parse, z } from "zod";
 import { useAuth } from "@clerk/clerk-react";
-import { authFetch } from "./api";
+import { authFetch, createNoteRequest, deleteNoteRequest, fetchNotes, updateNoteRequest } from "./api";
 import CreateNote from './components/CreateNote'
 import EditNote from "./components/EditNote";
+import Notes from "./components/Note";
 
 export type Mode = "home" | "edit" | "create";
-
-type NotesProps = {
-  loadingMessage: string;
-  setMode: React.Dispatch<React.SetStateAction<Mode>>;
-  notes: Note[];
-  setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
-  deleteNote: (noteId: string) => void;
-};
-
-function Notes({
-  notes,
-  setMode,
-  deleteNote,
-  setCurrentNote,
-  loadingMessage,
-}: NotesProps) {
-  return (
-    <div>
-      <button disabled={!!loadingMessage} onClick={() => setMode("create")}>
-        Create Note
-      </button>
-      {notes.length ? (
-        notes.map((note) => (
-          <div key={note.id}>
-            <span>
-              {note.subject} | {note.body}{" "}
-              <button onClick={() => deleteNote(note.id)}>Delete</button>
-              <button
-                onClick={() => {
-                  setCurrentNote(note);
-                  setMode("edit");
-                }}
-              >
-                Edit
-              </button>
-            </span>
-          </div>
-        ))
-      ) : (
-        <div>{loadingMessage ? loadingMessage : "No notes exist!"}</div>
-      )}
-    </div>
-  );
-}
 
 function App() {
   const [mode, setMode] = useState<Mode>("home");
@@ -81,6 +38,7 @@ function App() {
     }
 
     let cancelled = false;
+    // call fetchNotes() here
 
     const fetchData = async () => {
       const token = await getToken();
@@ -93,18 +51,15 @@ function App() {
           return;
         }
 
-        const res = await authFetch(
-          "http://localhost:3000/api/auth/notes",
-          "GET",
-          token!,
-        );
+        const res = await fetchNotes(token);
 
         if (!res.ok) {
           if (!cancelled) {
             setLoadingMessage("Failed to fetch");
           }
           return;
-        } else if (!cancelled) {
+        } 
+        else if (!cancelled) {
           setLoadingMessage("");
         }
 
@@ -131,11 +86,7 @@ function App() {
   async function deleteNote(noteId: string) {
     try {
       const token = await getToken();
-      const result = await authFetch(
-        `http://localhost:3000/api/auth/notes/${encodeURIComponent(noteId)}`,
-        "DELETE",
-        token!,
-      );
+      const result = await deleteNoteRequest(token!, noteId);
 
       if (result.ok) {
         setNotes((notes) => notes.filter((note) => note.id !== noteId));
@@ -149,6 +100,7 @@ function App() {
 
   async function createNote() {
     const parsedNote = NoteForm.safeParse(currentNote);
+    const token = await getToken();
 
     if (!parsedNote.success) {
       setErrors(z.prettifyError(parsedNote.error));
@@ -156,17 +108,7 @@ function App() {
     }
 
     try {
-      const token = await getToken();
-
-      const result = await authFetch(
-        "http://localhost:3000/api/auth/notes",
-        "POST",
-        token!,
-        JSON.stringify({
-          subject: parsedNote.data.subject,
-          body: parsedNote.data.body,
-        }),
-      );
+      const result = await createNoteRequest(token!, parsedNote.data.subject, parsedNote.data.body);
 
       if (!result.ok) {
         alert("Couldn't create the note");
@@ -201,16 +143,7 @@ function App() {
 
     try {
       const token = await getToken();
-
-      const result = await authFetch(
-        `http://localhost:3000/api/auth/notes/${encodeURIComponent(currentNote.id)}`,
-        "PATCH",
-        token!,
-        JSON.stringify({
-          subject: parsedNote.data.subject,
-          body: parsedNote.data.body,
-        }),
-      );
+      const result = await updateNoteRequest(token!, { id: currentNote.id, subject: parsedNote.data.subject, body: parsedNote.data.body});
 
       if (!result.ok) {
         alert("Couldn't update note");
