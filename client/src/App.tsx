@@ -16,9 +16,7 @@ import {
   fetchNotes,
   updateNoteRequest,
 } from "./api";
-import CreateNote from "./components/CreateNote";
-import EditNote from "./components/EditNote";
-import Notes from "./components/Note";
+import Notes from "./components/Notes";
 import NoteEditor from "./components/NoteEditor";
 
 function App() {

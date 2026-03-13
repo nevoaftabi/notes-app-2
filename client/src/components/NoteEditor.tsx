@@ -23,7 +23,6 @@ function NoteEditor({
   errors,
   mode,
 }: NoteEditorProps) {
-  console.log('here');
   return (
     <div>
       <label htmlFor="">Subject</label>

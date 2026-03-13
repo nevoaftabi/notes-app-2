@@ -1,5 +1,6 @@
 import type { Mode } from "../types";
 import type { Note } from "../types";
+import NoteItem from "./NoteItem";
 
 type NotesProps = {
   loadingMessage: string;
@@ -23,20 +24,7 @@ function Notes({
       </button>
       {notes.length ? (
         notes.map((note) => (
-          <div key={note.id}>
-            <span>
-              {note.subject} | {note.body}{" "}
-              <button onClick={() => deleteNote(note.id)}>Delete</button>
-              <button
-                onClick={() => {
-                  setCurrentNote(note);
-                  setMode("edit");
-                }}
-              >
-                Edit
-              </button>
-            </span>
-          </div>
+          <NoteItem key={note.id} deleteNote={deleteNote} loadingMessage={loadingMessage} note={note} setCurrentNote={setCurrentNote} setMode={setMode} />
         ))
       ) : (
         <div>{loadingMessage ? loadingMessage : "No notes exist!"}</div>
