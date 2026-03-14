@@ -9,7 +9,7 @@ type NoteEditorProps = {
   errors: string;
   setErrors: React.Dispatch<React.SetStateAction<string>>;
   editNote: () => void;
-  mode: string;
+  mode: Mode;
 };
 
 function NoteEditor({

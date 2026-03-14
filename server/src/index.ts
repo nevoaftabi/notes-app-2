@@ -55,7 +55,7 @@ app.post("/api/auth/notes", async (req: Request, res: Response) => {
   const parsedBody = CreateNoteBody.safeParse(req.body);
 
   if (!parsedBody.success) {
-    return res.sendStatus(400);
+    return res.status(400).json({ message: "Invalid note format" });
   }
 
   try {
@@ -66,7 +66,7 @@ app.post("/api/auth/notes", async (req: Request, res: Response) => {
     const noteId = result.rows[0].id;
     return res.status(201).json({ noteId });
   } catch (error) {
-    return res.sendStatus(500);
+    return res.status(500).json({ message: "Failed to create note" });
   }
 });
 
@@ -75,7 +75,7 @@ app.patch("/api/auth/notes/:id", async (req: Request, res: Response) => {
   const parsedBody = PatchNoteBody.safeParse(req.body);
 
   if (!parsedParams.success || !parsedBody.success) {
-    return res.sendStatus(400);
+    return res.status(400).json({ message: "Invalid note format" });
   }
 
   const user = req as AuthenticatedRequest;
@@ -91,13 +91,13 @@ app.patch("/api/auth/notes/:id", async (req: Request, res: Response) => {
       ],
     );
 
-    if(result.rowCount === 0) {
-        return res.sendStatus(404);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Couldn't find note" });
     }
 
     return res.sendStatus(200);
   } catch (error) {
-    return res.sendStatus(500);
+    return res.status(500).json({ message: "Failed to update note"});
   }
 });
 
@@ -111,7 +111,7 @@ app.get("/api/auth/notes", async (req: Request, res: Response) => {
     );
     return res.status(200).json({ rows: result.rows });
   } catch (error) {
-    return res.sendStatus(500);
+    return res.status(500).json({ message: "Couldn't retrieve notes"});
   }
 });
 
@@ -121,7 +121,7 @@ app.delete("/api/auth/notes/:id", async (req: Request, res: Response) => {
     const parsedId = DeleteNoteSchema.safeParse(req.params);
 
     if (!parsedId.success) {
-      return res.sendStatus(400);
+      return res.status(400).json({ message: "Bad note ID"});
     }
 
     const result = await pool.query(
@@ -130,12 +130,12 @@ app.delete("/api/auth/notes/:id", async (req: Request, res: Response) => {
     );
 
     if (result.rowCount === 0) {
-      return res.sendStatus(404);
+      return res.status(404).json({ message: "Couldn't find note"});
     }
 
     return res.sendStatus(200);
   } catch (error) {
-    return res.sendStatus(500);
+    return res.status(500).json({ message: "Couldn't delete note"});
   }
 });
 
@@ -151,4 +151,3 @@ if (typeof require !== "undefined" && require.main === module) {
     process.exit(1);
   });
 }
-

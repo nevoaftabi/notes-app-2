@@ -43,6 +43,8 @@ function App() {
         />
       ) : (
         <Notes
+          errors={errors}
+          setErrors={setErrors}
           deleteNote={deleteNote}
           loadingMessage={loadingMessage}
           notes={notes}

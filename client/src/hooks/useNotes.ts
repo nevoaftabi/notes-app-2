@@ -27,14 +27,7 @@ export const useNotes = () => {
       return;
     }
 
-    // if (!isSignedIn) {
-    //   //setNotes([]);
-    //   ..setLoadingMessage("Please sign in");
-    //   return;
-    // }
-
     let cancelled = false;
-    // call fetchNotes() here
 
     const fetchData = async () => {
       const token = await getToken();
@@ -60,7 +53,7 @@ export const useNotes = () => {
 
         const json = await res.json();
         if (!cancelled) {
-          setNotes(json.rows);
+          setNotes(json?.rows ?? []);
         }
       } catch (error) {
         if (!cancelled) {
@@ -85,20 +78,22 @@ export const useNotes = () => {
       if (result.ok) {
         setNotes((notes) => notes.filter((note) => note.id !== noteId));
       } else {
-        alert("Couldn't delete note");
+        const json = await result.json();
+        setErrors(json?.message);
       }
-    } catch (error) {
-      console.log(error);
+    } catch {
+      setErrors("Failed to fetch");
     }
   }
   async function createNote() {
     const parsedNote = NoteForm.safeParse(currentNote);
-    const token = await getToken();
 
     if (!parsedNote.success) {
       setErrors(z.prettifyError(parsedNote.error));
       return;
     }
+
+    const token = await getToken();
 
     try {
       const result = await createNoteRequest(
@@ -106,16 +101,16 @@ export const useNotes = () => {
         parsedNote.data.subject,
         parsedNote.data.body,
       );
+      const json = await result.json();
 
       if (!result.ok) {
-        alert("Couldn't create the note");
+        setErrors(json?.message);
         return;
       }
 
-      const json = await result.json();
-
       resetCurrentNote();
       setMode("home");
+      setErrors("");
 
       setNotes((notes) => [
         ...notes,
@@ -125,8 +120,8 @@ export const useNotes = () => {
           body: parsedNote.data.body,
         },
       ]);
-    } catch (error) {
-      alert("Couldn't create the note");
+    } catch {
+      setErrors("Failed to fetch");
     }
   }
 
@@ -147,7 +142,8 @@ export const useNotes = () => {
       });
 
       if (!result.ok) {
-        alert("Couldn't update note");
+        const json = await result.json();
+        setErrors(json?.message);
         return;
       }
 
@@ -157,8 +153,9 @@ export const useNotes = () => {
 
       resetCurrentNote();
       setMode("home");
-    } catch (error) {
-      alert("Couldn't update note");
+      setErrors("");
+    } catch {
+      setErrors("Failed to fetch");
     }
   }
 
