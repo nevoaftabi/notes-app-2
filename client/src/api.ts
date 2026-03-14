@@ -1,5 +1,7 @@
 import type { Note } from "./types";
 
+export const BASE_URL = "http://localhost:3000";
+
 export async function authFetch(
   url: string,
   method: string,
@@ -22,7 +24,7 @@ export async function authFetch(
 }
 
 export async function fetchNotes(token: string) {
-  return authFetch("http://localhost:3000/api/auth/notes", "GET", token!);
+  return authFetch(`${BASE_URL}/api/auth/notes`, "GET", token!);
 }
 
 export async function createNoteRequest(
@@ -31,7 +33,7 @@ export async function createNoteRequest(
   body: string,
 ) {
   return authFetch(
-    "http://localhost:3000/api/auth/notes",
+    `${BASE_URL}/api/auth/notes`,
     "POST",
     token!,
     JSON.stringify({
@@ -43,7 +45,7 @@ export async function createNoteRequest(
 
 export async function updateNoteRequest(token: string, note: Note) {
   return authFetch(
-    `http://localhost:3000/api/auth/notes/${encodeURIComponent(note.id)}`,
+    `${BASE_URL}/api/auth/notes/${encodeURIComponent(note.id)}`,
     "PATCH",
     token!,
     JSON.stringify({ ...note }),
@@ -52,7 +54,7 @@ export async function updateNoteRequest(token: string, note: Note) {
 
 export async function deleteNoteRequest(token: string, noteId: string) {
   return authFetch(
-    `http://localhost:3000/api/auth/notes/${encodeURIComponent(noteId)}`,
+    `${BASE_URL}/api/auth/notes/${encodeURIComponent(noteId)}`,
     "DELETE",
     token!,
   );
