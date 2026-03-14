@@ -10,6 +10,7 @@ type NotesProps = {
   setErrors: React.Dispatch<React.SetStateAction<string>>;
   setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
   deleteNote: (noteId: string) => void;
+  disableButtons: boolean;
 };
 
 function Notes({
@@ -20,11 +21,12 @@ function Notes({
   setErrors,
   loadingMessage,
   errors,
+  disableButtons
 }: NotesProps) {
   return (
     <div>
       <button
-        disabled={!!loadingMessage}
+        disabled={!!loadingMessage || disableButtons}
         onClick={() => {
           setMode("create");
           setErrors("");
@@ -35,6 +37,7 @@ function Notes({
       {notes.length ? (
         notes.map((note) => (
           <NoteItem
+            disableButtons={disableButtons}
             key={note.id}
             deleteNote={deleteNote}
             note={note}

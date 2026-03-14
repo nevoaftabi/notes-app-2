@@ -5,6 +5,7 @@ type NoteItemProps = {
   setMode: React.Dispatch<React.SetStateAction<Mode>>;
   setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
   deleteNote: (noteId: string) => void;
+  disableButtons: boolean;
 };
 
 const NoteItem = ({
@@ -12,14 +13,17 @@ const NoteItem = ({
   deleteNote,
   setCurrentNote,
   setMode,
+  disableButtons
+  
 }: NoteItemProps) => {
   return (
     <>
       <div key={note.id}>
         <span>
           {note.subject} | {note.body}{" "}
-          <button onClick={() => deleteNote(note.id)}>Delete</button>
+          <button disabled={disableButtons} onClick={() => deleteNote(note.id)}>Delete</button>
           <button
+            disabled={disableButtons}
             onClick={() => {
               setCurrentNote(note);
               setMode("edit");

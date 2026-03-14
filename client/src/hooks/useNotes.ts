@@ -21,6 +21,8 @@ export const useNotes = () => {
   });
   const [notes, setNotes] = useState<Note[]>([]);
   const [errors, setErrors] = useState("");
+  const [submitDisabled, setSubmitDisabled] = useState(false);
+  const [disableButtons, setDisableButtons] = useState(false);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) {
@@ -72,6 +74,8 @@ export const useNotes = () => {
 
   async function deleteNote(noteId: string) {
     try {
+      setDisableButtons(true);
+
       const token = await getToken();
       const result = await deleteNoteRequest(token!, noteId);
 
@@ -84,6 +88,8 @@ export const useNotes = () => {
     } catch {
       setErrors("Failed to fetch");
     }
+
+    setDisableButtons(false);
   }
   async function createNote() {
     const parsedNote = NoteForm.safeParse(currentNote);
@@ -92,6 +98,8 @@ export const useNotes = () => {
       setErrors(z.prettifyError(parsedNote.error));
       return;
     }
+
+    setSubmitDisabled(true);
 
     const token = await getToken();
 
@@ -105,12 +113,14 @@ export const useNotes = () => {
 
       if (!result.ok) {
         setErrors(json?.message);
+        setSubmitDisabled(false);
         return;
       }
 
       resetCurrentNote();
       setMode("home");
       setErrors("");
+      setSubmitDisabled(false);
 
       setNotes((notes) => [
         ...notes,
@@ -122,6 +132,7 @@ export const useNotes = () => {
       ]);
     } catch {
       setErrors("Failed to fetch");
+      setSubmitDisabled(false);
     }
   }
 
@@ -144,6 +155,7 @@ export const useNotes = () => {
       if (!result.ok) {
         const json = await result.json();
         setErrors(json?.message);
+
         return;
       }
 
@@ -176,5 +188,7 @@ export const useNotes = () => {
     setCurrentNote,
     currentNote,
     deleteNote,
+    submitDisabled,
+    disableButtons,
   };
 };

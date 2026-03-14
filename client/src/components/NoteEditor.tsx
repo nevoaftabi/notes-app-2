@@ -9,6 +9,7 @@ type NoteEditorProps = {
   errors: string;
   setErrors: React.Dispatch<React.SetStateAction<string>>;
   editNote: () => void;
+  submitDisabled: boolean;
   mode: Mode;
 };
 
@@ -19,6 +20,7 @@ function NoteEditor({
   setCurrentNote,
   editNote,
   createNote,
+  submitDisabled,
   setErrors,
   errors,
   mode,
@@ -28,12 +30,13 @@ function NoteEditor({
       <label htmlFor="">Subject</label>
       <input
         type="text"
-        onChange={(e) =>
-          setCurrentNote({ ...currentNote, subject: e.target.value })
-        }
+        onChange={(e) => {
+          setCurrentNote({ ...currentNote, subject: e.target.value });
+          setErrors("");
+        }}
         value={currentNote.subject}
       />
-      <button
+      <button disabled={submitDisabled}
         onClick={() => {
           setMode("home");
           resetCurrentNote();
@@ -49,21 +52,25 @@ function NoteEditor({
         name=""
         id=""
         style={{ width: 200, height: 200 }}
-        onChange={(e) =>
-          setCurrentNote({ ...currentNote, body: e.target.value })
-        }
+        onChange={(e) => {
+          setCurrentNote({ ...currentNote, body: e.target.value });
+          setErrors("");
+        }}
         value={currentNote.body}
       ></textarea>
       <br />
       <br />
-      <button onClick={() => { 
-        if(mode === "edit") {
-          editNote();
-        }
-        else if(mode === "create") {
-          createNote();
-        }
-      }}>Submit</button>
+      <button disabled={submitDisabled}
+        onClick={() => {
+          if (mode === "edit") {
+            editNote();
+          } else if (mode === "create") {
+            createNote();
+          }
+        }}
+      >
+        Submit
+      </button>
       <div>{errors}</div>
     </div>
   );
