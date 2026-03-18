@@ -1,3 +1,4 @@
+import { NoteForm } from "../schemas";
 import type { Mode, Note } from "../types";
 
 type NoteEditorProps = {
@@ -26,41 +27,44 @@ function NoteEditor({
   mode,
 }: NoteEditorProps) {
   return (
-    <div>
-      <label htmlFor="">Subject</label>
-      <input
-        type="text"
-        onChange={(e) => {
-          setCurrentNote({ ...currentNote, subject: e.target.value });
-          setErrors("");
-        }}
-        value={currentNote.subject}
-      />
-      <button disabled={submitDisabled}
-        onClick={() => {
-          setMode("home");
-          resetCurrentNote();
-          setErrors("");
-        }}
-      >
-        Back
-      </button>
-      <br />
-      <br />
-      <label htmlFor="">Body</label>
-      <textarea
-        name=""
-        id=""
-        style={{ width: 200, height: 200 }}
-        onChange={(e) => {
-          setCurrentNote({ ...currentNote, body: e.target.value });
-          setErrors("");
-        }}
-        value={currentNote.body}
-      ></textarea>
-      <br />
-      <br />
-      <button disabled={submitDisabled}
+    <div className="space-y-4 mx-auto mt-12 max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-slate-200">Subject</label>
+        {/* Use attributes from NoteForm schema */}
+        <input
+          maxLength={100}
+          type="text"
+          className="resize-none w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
+          onChange={(e) => {
+            setCurrentNote({ ...currentNote, subject: e.target.value });
+            setErrors("");
+          }}
+          value={currentNote.subject}
+        />
+        <p className="text-sm text-slate-400">
+          {100 - currentNote.subject.length} characters left
+        </p>
+      </div>
+      <div className="spaec-y-2">
+        <label className="text-sm font-medium text-slate-200">Body</label>
+        <textarea
+          minLength={1}
+          maxLength={3000}
+          className="resize-none text-base text-slate-100 min-h-40 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2  placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
+          onChange={(e) => {
+            setCurrentNote({ ...currentNote, body: e.target.value });
+            setErrors("");
+          }}
+          value={currentNote.body}
+        ></textarea>
+        <p className="text-sm text-slate-400">
+          {3000 - currentNote.body.length} characters left
+        </p>
+      </div>
+
+      <button
+        disabled={submitDisabled}
+        className="rounded-lg bg-sky-600 px-4 py-2 font-medium text-white shadow-sm transition hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-300 disabled:cursor-not-allowed disabled:opacity-50"
         onClick={() => {
           if (mode === "edit") {
             editNote();
@@ -70,6 +74,17 @@ function NoteEditor({
         }}
       >
         Submit
+      </button>
+      <button
+        disabled={submitDisabled}
+        className="rounded-lg m-4 bg-sky-600 px-4 py-2 font-medium text-white shadow-sm transition hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-300 disabled:cursor-not-allowed disabled:opacity-50"
+        onClick={() => {
+          setMode("home");
+          resetCurrentNote();
+          setErrors("");
+        }}
+      >
+        Back
       </button>
       <div>{errors}</div>
     </div>

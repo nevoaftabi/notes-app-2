@@ -91,6 +91,7 @@ export const useNotes = () => {
 
     setDisableButtons(false);
   }
+  
   async function createNote() {
     const parsedNote = NoteForm.safeParse(currentNote);
 

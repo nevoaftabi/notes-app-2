@@ -2,6 +2,9 @@ import Notes from "./components/Notes";
 import NoteEditor from "./components/NoteEditor";
 import { useNotes } from "./hooks/useNotes";
 
+// Disable buttons while edit request in flight
+// Program CSS for the home page
+
 function App() {
   const {
     createNote,
@@ -17,11 +20,12 @@ function App() {
     setErrors,
     setMode,
     submitDisabled,
-    disableButtons
+    disableButtons,
   } = useNotes();
 
   return (
     <>
+    
       {mode !== "home" ? (
         <NoteEditor
           createNote={createNote}
