@@ -18,6 +18,8 @@ export const useNotes = () => {
     id: "",
     subject: "",
     body: "",
+    createdAt: "",
+    updatedAt: ""
   });
   const [notes, setNotes] = useState<Note[]>([]);
   const [errors, setErrors] = useState("");
@@ -110,6 +112,7 @@ export const useNotes = () => {
         parsedNote.data.subject,
         parsedNote.data.body,
       );
+      
       const json = await result.json();
 
       if (!result.ok) {
@@ -129,6 +132,8 @@ export const useNotes = () => {
           id: json.noteId,
           subject: parsedNote.data.subject,
           body: parsedNote.data.body,
+          createdAt: json.createdAt,
+          updatedAt: json.updatedAt
         },
       ]);
     } catch {
@@ -153,15 +158,15 @@ export const useNotes = () => {
         body: parsedNote.data.body,
       });
 
+      const json = await result.json();
+      
       if (!result.ok) {
-        const json = await result.json();
         setErrors(json?.message);
-
         return;
       }
 
       setNotes((notes) =>
-        notes.map((note) => (currentNote.id === note.id ? currentNote : note)),
+        notes.map((note) => (currentNote.id === note.id ? { ...currentNote, updatedAt: json.updatedAt} : note)),
       );
 
       resetCurrentNote();
@@ -173,7 +178,7 @@ export const useNotes = () => {
   }
 
   function resetCurrentNote() {
-    setCurrentNote({ id: "", subject: "", body: "" });
+    setCurrentNote({ id: "", subject: "", body: "", createdAt: "", updatedAt: "" });
   }
 
   return {

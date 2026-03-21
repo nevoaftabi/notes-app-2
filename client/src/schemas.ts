@@ -5,3 +5,8 @@ export const NoteForm = z.object({
     body: z.string().trim().min(1).max(3000)
 });
 
+export const EditNoteForm = z.object({
+    subject: z.string().trim().min(1).max(100),
+    body: z.string().trim().min(1).max(3000)
+});
+

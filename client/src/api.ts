@@ -1,4 +1,4 @@
-import type { Note } from "./types";
+import type { EditNoteRequest } from "./types";
 
 export const BASE_URL = "http://localhost:3000";
 
@@ -43,7 +43,7 @@ export async function createNoteRequest(
   );
 }
 
-export async function updateNoteRequest(token: string, note: Note) {
+export async function updateNoteRequest(token: string, note: EditNoteRequest) {
   return authFetch(
     `${BASE_URL}/api/auth/notes/${encodeURIComponent(note.id)}`,
     "PATCH",

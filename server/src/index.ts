@@ -50,6 +50,7 @@ app.use(
   },
 );
 
+// Update updated_at to now() when the user posts a new note
 app.post("/api/auth/notes", async (req: Request, res: Response) => {
   const user = req as AuthenticatedRequest;
   const parsedBody = CreateNoteBody.safeParse(req.body);
@@ -60,16 +61,17 @@ app.post("/api/auth/notes", async (req: Request, res: Response) => {
 
   try {
     const result = await pool.query(
-      "insert into notes(subject, body, user_id) values ($1, $2, $3) returning id",
+      "insert into notes(subject, body, user_id) values ($1, $2, $3) returning id, created_at, updated_at",
       [parsedBody.data.subject, parsedBody.data.body, user.user.id],
     );
-    const noteId = result.rows[0].id;
-    return res.status(201).json({ noteId });
+    const row = result.rows[0];
+    return res.status(201).json({ noteId: row.id , createdAt: row.created_at, updatedAt: row.updated_at  });
   } catch (error) {
     return res.status(500).json({ message: "Failed to create note" });
   }
 });
 
+// Update updated_at here
 app.patch("/api/auth/notes/:id", async (req: Request, res: Response) => {
   const parsedParams = PatchNoteParams.safeParse(req.params);
   const parsedBody = PatchNoteBody.safeParse(req.body);
@@ -82,7 +84,7 @@ app.patch("/api/auth/notes/:id", async (req: Request, res: Response) => {
 
   try {
     const result = await pool.query(
-      "update notes set subject=$1, body=$2 where id=$3 and user_id=$4",
+      "update notes set updated_at = now(), subject=$1, body=$2 where id=$3 and user_id=$4 returning updated_at",
       [
         parsedBody.data.subject,
         parsedBody.data.body,
@@ -95,7 +97,7 @@ app.patch("/api/auth/notes/:id", async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Couldn't find note" });
     }
 
-    return res.sendStatus(200);
+    return res.status(200).json({ updatedAt: result.rows[0].updated_at});
   } catch (error) {
     return res.status(500).json({ message: "Failed to update note"});
   }
@@ -106,7 +108,7 @@ app.get("/api/auth/notes", async (req: Request, res: Response) => {
 
   try {
     const result = await pool.query(
-      "select id, subject, body from notes where user_id=$1",
+      `select id, subject, body, created_at as "createdAt", updated_at as "updatedAt" from notes where user_id=$1`,
       [user.user.id],
     );
     return res.status(200).json({ rows: result.rows });

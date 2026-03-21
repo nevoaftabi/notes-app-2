@@ -1,4 +1,3 @@
-import { NoteForm } from "../schemas";
 import type { Mode, Note } from "../types";
 
 type NoteEditorProps = {
