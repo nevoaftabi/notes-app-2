@@ -1,10 +1,9 @@
 import { useNavigate } from "react-router";
-import type { Mode, Note } from "../types";
+import type { Note } from "../types";
 import { getReadableDate } from "../utils";
 
 type NoteItemProps = {
   note: Note;
-  setMode: React.Dispatch<React.SetStateAction<Mode>>;
   setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
   deleteNote: (noteId: string) => void;
   disableButtons: boolean;
@@ -15,7 +14,6 @@ const NoteItem = ({
   note,
   deleteNote,
   setCurrentNote,
-  setMode,
   setErrors,
   disableButtons,
 }: NoteItemProps) => {
@@ -60,7 +58,6 @@ const NoteItem = ({
             setCurrentNote(note);
             setErrors("");
             navigate(`/notes/${note.id}/edit`)
-            setMode("edit");
           }}
         >
           Edit

@@ -3,9 +3,6 @@ import NoteEditor from "./components/NoteEditor";
 import { useNotes } from "./hooks/useNotes";
 import { Route, Routes } from "react-router";
 
-// Disable buttons while edit request in flight
-// Program CSS for the home page
-
 function App() {
   const {
     createNote,
@@ -14,12 +11,10 @@ function App() {
     editNote,
     errors,
     loadingMessage,
-    mode,
     notes,
     resetCurrentNote,
     setCurrentNote,
     setErrors,
-    setMode,
     submitDisabled,
     disableButtons,
     isFetchingNote,
@@ -37,11 +32,8 @@ function App() {
             editNote={editNote}
             errors={errors}
             submitDisabled={submitDisabled}
-            mode={mode}
-            resetCurrentNote={resetCurrentNote}
             setCurrentNote={setCurrentNote}
             setErrors={setErrors}
-            setMode={setMode}
             fetchNoteById={fetchNoteById}
             isFetchingNote={isFetchingNote}
           />
@@ -56,11 +48,8 @@ function App() {
             editNote={editNote}
             errors={errors}
             submitDisabled={submitDisabled}
-            mode={mode}
-            resetCurrentNote={resetCurrentNote}
             setCurrentNote={setCurrentNote}
             setErrors={setErrors}
-            setMode={setMode}
             fetchNoteById={fetchNoteById}
             isFetchingNote={isFetchingNote}
           />
@@ -77,19 +66,11 @@ function App() {
             loadingMessage={loadingMessage}
             notes={notes}
             setCurrentNote={setCurrentNote}
-            setMode={setMode}
             resetCurrentNote={resetCurrentNote}
           />
         }
       />
     </Routes>
-  // add catch-all route
-    // {mode !== "home" ? (
-
-    // ) : (
-
-    // )}
-    // </>
   );
 }
 

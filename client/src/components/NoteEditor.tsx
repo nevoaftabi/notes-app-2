@@ -1,26 +1,21 @@
 import { useNavigate, useParams } from "react-router";
-import type { Mode, Note } from "../types";
+import type { Note } from "../types";
 import { useEffect } from "react";
 import { z } from "zod";
 
 type NoteEditorProps = {
-  setMode: React.Dispatch<React.SetStateAction<Mode>>;
   currentNote: Note;
   createNote: () => void;
   setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
-  resetCurrentNote: () => void;
   errors: string;
   setErrors: React.Dispatch<React.SetStateAction<string>>;
   editNote: () => void;
   submitDisabled: boolean;
   fetchNoteById: (noteId: string) => void;
   isFetchingNote: boolean;
-  mode: Mode;
 };
 
 function NoteEditor({
-  setMode,
-  resetCurrentNote,
   currentNote,
   setCurrentNote,
   editNote,
@@ -30,7 +25,6 @@ function NoteEditor({
   errors,
   fetchNoteById,
   isFetchingNote,
-  mode,
 }: NoteEditorProps) {
   const navigate = useNavigate();
   const { id } = useParams();

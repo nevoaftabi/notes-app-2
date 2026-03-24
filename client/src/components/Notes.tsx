@@ -1,11 +1,9 @@
 import { useNavigate } from "react-router";
-import type { Mode } from "../types";
 import type { Note } from "../types";
 import NoteItem from "./NoteItem";
 
 type NotesProps = {
   loadingMessage: string;
-  setMode: React.Dispatch<React.SetStateAction<Mode>>;
   notes: Note[];
   errors: string;
   setErrors: React.Dispatch<React.SetStateAction<string>>;
@@ -17,7 +15,6 @@ type NotesProps = {
 
 function Notes({
   notes,
-  setMode,
   deleteNote,
   setCurrentNote,
   setErrors,
@@ -55,7 +52,6 @@ function Notes({
               deleteNote={deleteNote}
               note={note}
               setCurrentNote={setCurrentNote}
-              setMode={setMode}
             />
           ))
       ) : (
