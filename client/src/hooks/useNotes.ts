@@ -5,10 +5,12 @@ import {
   createNoteRequest,
   deleteNoteRequest,
   fetchNotes,
+  fetchNoteRequest,
   updateNoteRequest,
 } from "../api";
 import { NoteForm } from "../schemas";
 import { z } from "zod";
+import { useNavigate } from "react-router";
 
 export const useNotes = () => {
   const [mode, setMode] = useState<Mode>("home");
@@ -25,6 +27,9 @@ export const useNotes = () => {
   const [errors, setErrors] = useState("");
   const [submitDisabled, setSubmitDisabled] = useState(false);
   const [disableButtons, setDisableButtons] = useState(false);
+  const [isFetchingNote, setFetchingNote] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) {
@@ -74,6 +79,30 @@ export const useNotes = () => {
     };
   }, [getToken, isLoaded, isSignedIn]);
 
+  async function fetchNoteById(noteId: string) {
+    try {
+      setFetchingNote(true);
+      const token = await getToken();
+      const result = await fetchNoteRequest(token!, noteId);
+
+      if(result.ok) {
+        const json = await result.json();
+        setCurrentNote(json);
+      }
+      else {
+        setErrors(`Couldn't find note with ID ${noteId}`);
+        navigate("/");
+      }
+    }
+    catch {
+      setErrors(`Encountered error while finding note with ID ${noteId}`);
+      navigate("/");
+    }
+    finally {
+      setFetchingNote(false);
+    }
+  }
+
   async function deleteNote(noteId: string) {
     try {
       setDisableButtons(true);
@@ -88,10 +117,11 @@ export const useNotes = () => {
         setErrors(json?.message);
       }
     } catch {
-      setErrors("Failed to fetch");
+      setErrors("Failed to delete note");
     }
-
-    setDisableButtons(false);
+    finally {
+      setDisableButtons(false);
+    }
   }
   
   async function createNote() {
@@ -117,14 +147,13 @@ export const useNotes = () => {
 
       if (!result.ok) {
         setErrors(json?.message);
-        setSubmitDisabled(false);
         return;
       }
 
       resetCurrentNote();
       setMode("home");
+      navigate("/");
       setErrors("");
-      setSubmitDisabled(false);
 
       setNotes((notes) => [
         ...notes,
@@ -137,7 +166,9 @@ export const useNotes = () => {
         },
       ]);
     } catch {
-      setErrors("Failed to fetch");
+      setErrors("Failed to create note");
+    }
+    finally {
       setSubmitDisabled(false);
     }
   }
@@ -149,6 +180,8 @@ export const useNotes = () => {
       setErrors(z.prettifyError(parsedNote.error));
       return;
     }
+
+    setSubmitDisabled(true);
 
     try {
       const token = await getToken();
@@ -169,11 +202,13 @@ export const useNotes = () => {
         notes.map((note) => (currentNote.id === note.id ? { ...currentNote, updatedAt: json.updatedAt} : note)),
       );
 
-      resetCurrentNote();
-      setMode("home");
       setErrors("");
+      navigate("/");
     } catch {
-      setErrors("Failed to fetch");
+      setErrors("Failed to edit note");
+    }
+    finally {
+      setSubmitDisabled(false);
     }
   }
 
@@ -196,5 +231,7 @@ export const useNotes = () => {
     deleteNote,
     submitDisabled,
     disableButtons,
+    fetchNoteById,
+    isFetchingNote
   };
 };

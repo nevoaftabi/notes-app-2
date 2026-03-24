@@ -19,6 +19,10 @@ export const PatchNoteBody = z.object({
   body: z.string().trim().min(1).max(3000),
 });
 
+export const GetNoteParams = z.object({
+  id: z.uuid()
+})
+
 export const PatchNoteParams = z.object({
   id: z.uuid(),
 });

@@ -8,6 +8,7 @@ import {
   AuthenticatedRequest,
   CreateNoteBody,
   DeleteNoteSchema,
+  GetNoteParams,
   getUser,
   PatchNoteBody,
   PatchNoteParams,
@@ -108,12 +109,37 @@ app.get("/api/auth/notes", async (req: Request, res: Response) => {
 
   try {
     const result = await pool.query(
-      `select id, subject, body, created_at as "createdAt", updated_at as "updatedAt" from notes where user_id=$1`,
+      `select id, subject, body, created_at as "createdAt", updated_at as "updatedAt" from notes where user_id=$1 order by updated_at desc`,
       [user.user.id],
     );
     return res.status(200).json({ rows: result.rows });
   } catch (error) {
     return res.status(500).json({ message: "Couldn't retrieve notes"});
+  }
+});
+
+app.get("/api/auth/notes/:id", async (req: Request, res: Response) => {
+  try {
+    const user = req as AuthenticatedRequest;
+    const parsedId = GetNoteParams.safeParse(req.params);
+
+    if(!parsedId.success) {
+      return res.status(400).json({ message: "Bad note ID"});
+    }
+
+    const result = await pool.query(
+      `select id, subject, body, created_at as "createdAt", updated_at as "updatedAt" from notes where id=$1 and user_id=$2`,
+      [parsedId.data.id, user.user.id]
+    )
+
+    if(result.rowCount !== 1) {
+      return res.status(404).json({ message: "Couldn't find note"});
+    }
+
+    return res.status(200).json(result.rows[0]);
+  }
+  catch {
+    return res.status(500).json({ message: "Couldn't retrieve note"});
   }
 });
 

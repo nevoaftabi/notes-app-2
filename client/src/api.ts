@@ -59,3 +59,11 @@ export async function deleteNoteRequest(token: string, noteId: string) {
     token!,
   );
 }
+
+export async function fetchNoteRequest(token: string, noteId: string) {
+  return authFetch(
+    `${BASE_URL}/api/auth/notes/${encodeURIComponent(noteId)}`,
+    "GET",
+    token!
+  )
+}

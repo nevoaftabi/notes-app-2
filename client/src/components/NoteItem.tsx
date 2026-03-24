@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router";
 import type { Mode, Note } from "../types";
 import { getReadableDate } from "../utils";
 
@@ -7,6 +8,7 @@ type NoteItemProps = {
   setCurrentNote: React.Dispatch<React.SetStateAction<Note>>;
   deleteNote: (noteId: string) => void;
   disableButtons: boolean;
+  setErrors: React.Dispatch<React.SetStateAction<string>>;
 };
 
 const NoteItem = ({
@@ -14,8 +16,11 @@ const NoteItem = ({
   deleteNote,
   setCurrentNote,
   setMode,
+  setErrors,
   disableButtons,
 }: NoteItemProps) => {
+  const navigate = useNavigate();
+
   return (
     <div className="my-5 flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 p-4 shadow-sm">
       <div className="min-w-0 flex-1">
@@ -53,6 +58,8 @@ const NoteItem = ({
           disabled={disableButtons}
           onClick={() => {
             setCurrentNote(note);
+            setErrors("");
+            navigate(`/notes/${note.id}/edit`)
             setMode("edit");
           }}
         >
