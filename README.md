@@ -13,5 +13,5 @@ This is a note taking app made with React, TypeScript, Express.js, Express.js, a
 # App workflow:
 
 <img src="./login_page.png" alt="login page" width="200px" height="200px">
-<img src="./home_page.png" alt="home page" width="200px" height="200px">
-<img src="./create_note_page.png" alt="create note page" width="200px" height="200px">
+<img src="./home_page.png" alt="home page" width="500px" height="500px">
+<img src="./create_note_page.png" alt="create note page" width="500px" height="500px">
