@@ -1,6 +1,6 @@
 import { useAuth } from "@clerk/clerk-react";
-import { useEffect, useState } from "react";
-import type { Mode, Note } from "../types";
+import { useEffect, useCallback, useState } from "react";
+import type { Note } from "../types";
 import {
   createNoteRequest,
   deleteNoteRequest,
@@ -13,7 +13,6 @@ import { z } from "zod";
 import { useNavigate } from "react-router";
 
 export const useNotes = () => {
-  const [mode, setMode] = useState<Mode>("home");
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
   const [currentNote, setCurrentNote] = useState<Note>({
@@ -79,9 +78,10 @@ export const useNotes = () => {
     };
   }, [getToken, isLoaded, isSignedIn]);
 
-  async function fetchNoteById(noteId: string) {
+  const fetchNoteById = useCallback(async (noteId: string) => {
     try {
       setFetchingNote(true);
+
       const token = await getToken();
       const result = await fetchNoteRequest(token!, noteId);
 
@@ -101,7 +101,7 @@ export const useNotes = () => {
     finally {
       setFetchingNote(false);
     }
-  }
+  }, [getToken, navigate]);
 
   async function deleteNote(noteId: string) {
     try {
@@ -151,7 +151,6 @@ export const useNotes = () => {
       }
 
       resetCurrentNote();
-      setMode("home");
       navigate("/");
       setErrors("");
 
@@ -217,12 +216,10 @@ export const useNotes = () => {
   }
 
   return {
-    mode,
     notes,
     editNote,
     resetCurrentNote,
     createNote,
-    setMode,
     loadingMessage,
     setErrors,
     errors,

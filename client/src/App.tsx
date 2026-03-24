@@ -1,7 +1,7 @@
 import Notes from "./components/Notes";
 import NoteEditor from "./components/NoteEditor";
 import { useNotes } from "./hooks/useNotes";
-import { Route, Routes } from "react-router";
+import { Navigate, Route, Routes } from "react-router";
 
 function App() {
   const {
@@ -18,7 +18,7 @@ function App() {
     submitDisabled,
     disableButtons,
     isFetchingNote,
-    fetchNoteById
+    fetchNoteById,
   } = useNotes();
 
   return (
@@ -70,6 +70,7 @@ function App() {
           />
         }
       />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

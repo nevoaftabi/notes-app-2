@@ -32,7 +32,7 @@ function NoteEditor({
   const isDisabled = isFetchingNote || submitDisabled;
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || isFetchingNote) return;
 
     const parsedId = z.uuid().safeParse(id);
 
@@ -46,7 +46,7 @@ function NoteEditor({
     }
 
     fetchNoteById(parsedId.data);
-  }, [id, isEditMode, fetchNoteById, currentNote.id, navigate]);
+  }, [id, isEditMode, isFetchingNote, fetchNoteById, currentNote.id, navigate]);
 
   return (
     <div className="space-y-4 mx-auto mt-12 max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
