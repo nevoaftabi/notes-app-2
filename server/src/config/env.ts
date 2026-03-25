@@ -18,8 +18,8 @@ function intOr(name: string, fallback: number): number {
 }
 
 export const env = {
-  PORT: requireEnv("PORT"),
+  PORT: envOr("PORT", "3000"),
   CLERK_SECRET_KEY: requireEnv("CLERK_SECRET_KEY"),
   DATABASE_URL: requireEnv("DATABASE_URL"),
-  NODE_ENV: requireEnv("NODE_ENV")
+  NODE_ENV: envOr("NODE_ENV", "development")
 };

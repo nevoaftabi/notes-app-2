@@ -45,7 +45,7 @@ export async function getUser(req: Request) {
   try {
     const verifiedToken = await verifyToken(token, {
       secretKey: env.CLERK_SECRET_KEY,
-      authorizedParties: ["http://localhost:5173"],
+      authorizedParties: [process.env.FRONTEND_BASE_URL ?? "http://localhost:5173"],
     });
 
     const userId = verifiedToken.sub;
