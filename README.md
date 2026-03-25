@@ -1,6 +1,6 @@
 # Note Taking Web App
 
-This is a note taking app made with React, TypeScript, Express.js, Express.js, and PostgreSQL.
+This is a note taking app made with React, TypeScript, Express.js, Express.js, and PostgreSQL.<br>
 https://client-five-gray-80.vercel.app/
 
 - Every note has a subject and body. You can write notes and save them to your account.
