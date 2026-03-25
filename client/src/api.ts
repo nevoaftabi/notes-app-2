@@ -1,6 +1,7 @@
 import type { EditNoteRequest } from "./types";
 
-export const BASE_URL = "http://localhost:3000";
+export const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000";
 
 export async function authFetch(
   url: string,
@@ -64,6 +65,6 @@ export async function fetchNoteRequest(token: string, noteId: string) {
   return authFetch(
     `${BASE_URL}/api/auth/notes/${encodeURIComponent(noteId)}`,
     "GET",
-    token!
-  )
+    token!,
+  );
 }
