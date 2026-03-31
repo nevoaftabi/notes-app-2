@@ -1,19 +1,11 @@
-import { useAuth } from "@clerk/clerk-react";
 import { useEffect, useCallback, useState } from "react";
 import type { Note } from "../types";
-import {
-  createNoteRequest,
-  deleteNoteRequest,
-  fetchNotes,
-  fetchNoteRequest,
-  updateNoteRequest,
-} from "../api";
 import { NoteForm } from "../schemas";
 import { z } from "zod";
 import { useNavigate } from "react-router";
+import { createStoredNote, loadNotes, saveNotes } from "../db";
 
 export const useNotes = () => {
-  const { getToken, isLoaded, isSignedIn } = useAuth();
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
   const [currentNote, setCurrentNote] = useState<Note>({
     id: "",
@@ -31,65 +23,21 @@ export const useNotes = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) {
-      return;
-    }
+    const storedNotes = loadNotes();
 
-    let cancelled = false;
-
-    const fetchData = async () => {
-      const token = await getToken();
-
-      try {
-        if (!token) {
-          if (!cancelled) {
-            setLoadingMessage("Failed to fetch");
-          }
-          return;
-        }
-
-        const res = await fetchNotes(token);
-
-        if (!res.ok) {
-          if (!cancelled) {
-            setLoadingMessage("Failed to fetch");
-          }
-          return;
-        } else if (!cancelled) {
-          setLoadingMessage("");
-        }
-
-        const json = await res.json();
-        if (!cancelled) {
-          setNotes(json?.rows ?? []);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setLoadingMessage("Failed to fetch");
-        }
-        console.log(error);
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [getToken, isLoaded, isSignedIn]);
+    setNotes(storedNotes);
+    setLoadingMessage("");
+  }, []);
 
   const fetchNoteById = useCallback(async (noteId: string) => {
     try {
       setFetchingNote(true);
 
-      const token = await getToken();
-      const result = await fetchNoteRequest(token!, noteId);
+      const note = loadNotes().find((storedNote) => storedNote.id === noteId);
 
-      if(result.ok) {
-        const json = await result.json();
-        setCurrentNote(json);
-      }
-      else {
+      if (note) {
+        setCurrentNote(note);
+      } else {
         setErrors(`Couldn't find note with ID ${noteId}`);
         navigate("/");
       }
@@ -101,21 +49,16 @@ export const useNotes = () => {
     finally {
       setFetchingNote(false);
     }
-  }, [getToken, navigate]);
+  }, [navigate]);
 
   async function deleteNote(noteId: string) {
     try {
       setDisableButtons(true);
+      const nextNotes = notes.filter((note) => note.id !== noteId);
 
-      const token = await getToken();
-      const result = await deleteNoteRequest(token!, noteId);
-
-      if (result.ok) {
-        setNotes((notes) => notes.filter((note) => note.id !== noteId));
-      } else {
-        const json = await result.json();
-        setErrors(json?.message);
-      }
+      saveNotes(nextNotes);
+      setNotes(nextNotes);
+      setErrors("");
     } catch {
       setErrors("Failed to delete note");
     }
@@ -134,36 +77,19 @@ export const useNotes = () => {
 
     setSubmitDisabled(true);
 
-    const token = await getToken();
-
     try {
-      const result = await createNoteRequest(
-        token!,
+      const newNote = createStoredNote(
         parsedNote.data.subject,
         parsedNote.data.body,
       );
-      
-      const json = await result.json();
+      const nextNotes = [newNote, ...notes];
 
-      if (!result.ok) {
-        setErrors(json?.message);
-        return;
-      }
+      saveNotes(nextNotes);
 
       resetCurrentNote();
       navigate("/");
       setErrors("");
-
-      setNotes((notes) => [
-        ...notes,
-        {
-          id: json.noteId,
-          subject: parsedNote.data.subject,
-          body: parsedNote.data.body,
-          createdAt: json.createdAt,
-          updatedAt: json.updatedAt
-        },
-      ]);
+      setNotes(nextNotes);
     } catch {
       setErrors("Failed to create note");
     }
@@ -183,23 +109,26 @@ export const useNotes = () => {
     setSubmitDisabled(true);
 
     try {
-      const token = await getToken();
-      const result = await updateNoteRequest(token!, {
-        id: currentNote.id,
-        subject: parsedNote.data.subject,
-        body: parsedNote.data.body,
-      });
+      const existingNote = notes.find((note) => note.id === currentNote.id);
 
-      const json = await result.json();
-      
-      if (!result.ok) {
-        setErrors(json?.message);
+      if (!existingNote) {
+        setErrors("Couldn't find note");
         return;
       }
 
-      setNotes((notes) =>
-        notes.map((note) => (currentNote.id === note.id ? { ...currentNote, updatedAt: json.updatedAt} : note)),
+      const updatedNote = {
+        ...existingNote,
+        subject: parsedNote.data.subject,
+        body: parsedNote.data.body,
+        updatedAt: new Date().toISOString(),
+      };
+      const nextNotes = notes.map((note) =>
+        currentNote.id === note.id ? updatedNote : note,
       );
+
+      saveNotes(nextNotes);
+      setNotes(nextNotes);
+      setCurrentNote(updatedNote);
 
       setErrors("");
       navigate("/");

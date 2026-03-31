@@ -1,21 +1,14 @@
 {
-  "dependencies": {
-    "@clerk/backend": "^3.2.0",
-    "concurrently": "^9.2.1",
-    "cors": "^2.8.6",
-    "dotenv": "^17.3.1",
-    "express": "^5.2.1",
-    "pg": "^8.20.0",
-    "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
-    "zod": "^4.3.6"
-  },
+  "name": "notes-app",
+  "private": true,
   "scripts": {
-    "dev": "ts-node index.ts"
+    "dev": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "lint": "npm --prefix client run lint",
+    "preview": "npm --prefix client run preview"
   },
-  "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/pg": "^8.18.0"
-  }
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "devDependencies": {}
 }
