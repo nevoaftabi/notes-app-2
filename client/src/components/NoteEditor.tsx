@@ -84,7 +84,6 @@ function NoteEditor({
           {3000 - currentNote.body.length} characters left
         </p>
       </div>
-
       <button
         disabled={isDisabled}
         className="rounded-lg bg-sky-600 px-4 py-2 font-medium text-white shadow-sm transition hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-300 disabled:cursor-not-allowed disabled:opacity-50"

@@ -40,7 +40,7 @@ const NoteItem = ({
         </button>
         <div className="absolute right-0 top-full z-10 mt-1 hidden w-64 whitespace-pre-line rounded-md bg-slate-800 px-3 py-2 text-left text-xs text-slate-100 shadow-lg group-hover:block">
           {`Created at: ${getReadableDate(note.createdAt)}\n`}
-          {`Updated at: ${getReadableDate(note.updatedAt)}`} 
+          {`Updated at: ${getReadableDate(note.updatedAt)}`}
         </div>
       </div>
       <div className="ml-4 flex items-center gap-2">
@@ -57,7 +57,7 @@ const NoteItem = ({
           onClick={() => {
             setCurrentNote(note);
             setErrors("");
-            navigate(`/notes/${note.id}/edit`)
+            navigate(`/notes/${note.id}/edit`);
           }}
         >
           Edit

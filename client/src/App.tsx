@@ -19,6 +19,7 @@ function App() {
     disableButtons,
     isFetchingNote,
     fetchNoteById,
+    storageMode,
   } = useNotes();
 
   return (
@@ -67,6 +68,7 @@ function App() {
             notes={notes}
             setCurrentNote={setCurrentNote}
             resetCurrentNote={resetCurrentNote}
+            storageMode={storageMode}
           />
         }
       />
