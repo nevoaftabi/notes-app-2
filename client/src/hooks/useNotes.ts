@@ -1,36 +1,79 @@
 import { useEffect, useCallback, useState } from "react";
-import type { Note } from "../types";
+import { createEmptyNote, type Note } from "../types";
 import { NoteForm } from "../schemas";
 import { z } from "zod";
 import { useNavigate } from "react-router";
-import { createStoredNote, loadNotes, saveNotes } from "../db";
+import { clearStoredNotes, createStoredNote, loadNotes, saveNotes } from "../db";
 import { useOptionalAuth } from "../auth-context";
 import {
   createNoteRequest,
   deleteNoteRequest,
   fetchNoteRequest,
   fetchNotes,
+  importNotesRequest,
+  permanentlyDeleteNoteRequest,
+  restoreNoteRequest,
+  shareNoteRequest,
+  unshareNoteRequest,
   updateNoteRequest,
 } from "../api";
 
 export const useNotes = () => {
   const { accountsAvailable, getToken, isReady, isSignedIn } = useOptionalAuth();
   const [loadingMessage, setLoadingMessage] = useState("Loading...");
-  const [currentNote, setCurrentNote] = useState<Note>({
-    id: "",
-    subject: "",
-    body: "",
-    createdAt: "",
-    updatedAt: ""
-  });
+  const [currentNote, setCurrentNote] = useState<Note>(createEmptyNote());
   const [notes, setNotes] = useState<Note[]>([]);
   const [errors, setErrors] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
   const [submitDisabled, setSubmitDisabled] = useState(false);
   const [disableButtons, setDisableButtons] = useState(false);
   const [isFetchingNote, setFetchingNote] = useState(false);
+  const [localImportCount, setLocalImportCount] = useState(0);
 
   const navigate = useNavigate();
   const storageMode: "local" | "account" = isSignedIn ? "account" : "local";
+
+  const refreshLocalImportCount = useCallback(() => {
+    setLocalImportCount(loadNotes().length);
+  }, []);
+
+  const loadAccountNotes = useCallback(async () => {
+    const token = await getToken();
+
+    if (!token) {
+      setLoadingMessage("Failed to fetch account notes");
+      return;
+    }
+
+    const res = await fetchNotes(token);
+
+    if (!res.ok) {
+      setLoadingMessage("Failed to fetch account notes");
+      return;
+    }
+
+    const json = await res.json();
+    setNotes(json?.rows ?? []);
+    setLoadingMessage("");
+  }, [getToken]);
+
+  useEffect(() => {
+    refreshLocalImportCount();
+  }, [refreshLocalImportCount]);
+
+  useEffect(() => {
+    if (!statusMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setStatusMessage("");
+    }, 3500);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [statusMessage]);
 
   useEffect(() => {
     if (accountsAvailable && !isReady) {
@@ -50,29 +93,8 @@ export const useNotes = () => {
       }
 
       try {
-        const token = await getToken();
-
-        if (!token) {
-          if (!cancelled) {
-            setLoadingMessage("Failed to fetch account notes");
-          }
-          return;
-        }
-
-        const res = await fetchNotes(token);
-
-        if (!res.ok) {
-          if (!cancelled) {
-            setLoadingMessage("Failed to fetch account notes");
-          }
-          return;
-        }
-
-        const json = await res.json();
-
         if (!cancelled) {
-          setNotes(json?.rows ?? []);
-          setLoadingMessage("");
+          await loadAccountNotes();
         }
       } catch {
         if (!cancelled) {
@@ -86,7 +108,7 @@ export const useNotes = () => {
     return () => {
       cancelled = true;
     };
-  }, [accountsAvailable, getToken, isReady, isSignedIn]);
+  }, [accountsAvailable, isReady, isSignedIn, loadAccountNotes]);
 
   const fetchNoteById = useCallback(async (noteId: string) => {
     try {
@@ -97,6 +119,7 @@ export const useNotes = () => {
 
         if (note) {
           setCurrentNote(note);
+          setStatusMessage("");
         } else {
           setErrors(`Couldn't find note with ID ${noteId}`);
           navigate("/");
@@ -118,6 +141,7 @@ export const useNotes = () => {
       if (result.ok) {
         const json = await result.json();
         setCurrentNote(json);
+        setStatusMessage("");
       } else {
         setErrors(`Couldn't find note with ID ${noteId}`);
         navigate("/");
@@ -137,11 +161,22 @@ export const useNotes = () => {
       setDisableButtons(true);
 
       if (!isSignedIn) {
-        const nextNotes = notes.filter((note) => note.id !== noteId);
+        const nextNotes = notes.map((note) =>
+          note.id === noteId
+            ? {
+                ...note,
+                deletedAt: new Date().toISOString(),
+                isPublic: false,
+                updatedAt: new Date().toISOString(),
+              }
+            : note,
+        );
 
         saveNotes(nextNotes);
         setNotes(nextNotes);
         setErrors("");
+        setStatusMessage("Note moved to trash");
+        refreshLocalImportCount();
         return;
       }
 
@@ -156,9 +191,18 @@ export const useNotes = () => {
 
       if (result.ok) {
         setNotes((currentNotes) =>
-          currentNotes.filter((note) => note.id !== noteId),
+          currentNotes.map((note) =>
+            note.id === noteId
+              ? {
+                  ...note,
+                  deletedAt: new Date().toISOString(),
+                  isPublic: false,
+                }
+              : note,
+          ),
         );
         setErrors("");
+        setStatusMessage("Note moved to trash");
       } else {
         const json = await result.json();
         setErrors(json?.message ?? "Failed to delete note");
@@ -169,6 +213,100 @@ export const useNotes = () => {
       );
     }
     finally {
+      setDisableButtons(false);
+    }
+  }
+
+  async function restoreNote(noteId: string) {
+    try {
+      setDisableButtons(true);
+
+      if (!isSignedIn) {
+        const nextNotes = notes.map((note) =>
+          note.id === noteId ? { ...note, deletedAt: null } : note,
+        );
+
+        saveNotes(nextNotes);
+        setNotes(nextNotes);
+        setErrors("");
+        setStatusMessage("Note restored");
+        refreshLocalImportCount();
+        return;
+      }
+
+      const token = await getToken();
+
+      if (!token) {
+        setErrors("You need to be signed in to restore notes");
+        return;
+      }
+
+      const result = await restoreNoteRequest(token, noteId);
+      const json = await result.json();
+
+      if (!result.ok) {
+        setErrors(json?.message ?? "Failed to restore note");
+        return;
+      }
+
+      setNotes((currentNotes) =>
+        currentNotes.map((note) =>
+          note.id === noteId
+            ? { ...note, deletedAt: json.deletedAt, updatedAt: json.updatedAt }
+            : note,
+        ),
+      );
+      setErrors("");
+      setStatusMessage("Note restored");
+    } catch {
+      setErrors(isSignedIn ? "Failed to restore account note" : "Failed to restore note");
+    } finally {
+      setDisableButtons(false);
+    }
+  }
+
+  async function permanentlyDeleteNote(noteId: string) {
+    try {
+      setDisableButtons(true);
+
+      if (!isSignedIn) {
+        const nextNotes = notes.filter((note) => note.id !== noteId);
+
+        saveNotes(nextNotes);
+        setNotes(nextNotes);
+        setErrors("");
+        setStatusMessage("Note permanently deleted");
+        refreshLocalImportCount();
+        return;
+      }
+
+      const token = await getToken();
+
+      if (!token) {
+        setErrors("You need to be signed in to permanently delete notes");
+        return;
+      }
+
+      const result = await permanentlyDeleteNoteRequest(token, noteId);
+
+      if (!result.ok) {
+        const json = await result.json();
+        setErrors(json?.message ?? "Failed to permanently delete note");
+        return;
+      }
+
+      setNotes((currentNotes) =>
+        currentNotes.filter((note) => note.id !== noteId),
+      );
+      setErrors("");
+      setStatusMessage("Note permanently deleted");
+    } catch {
+      setErrors(
+        isSignedIn
+          ? "Failed to permanently delete account note"
+          : "Failed to permanently delete note",
+      );
+    } finally {
       setDisableButtons(false);
     }
   }
@@ -188,6 +326,11 @@ export const useNotes = () => {
         const newNote = createStoredNote(
           parsedNote.data.subject,
           parsedNote.data.body,
+          {
+            tags: parsedNote.data.tags,
+            folder: parsedNote.data.folder,
+            pinned: parsedNote.data.pinned,
+          },
         );
         const nextNotes = [newNote, ...notes];
 
@@ -196,7 +339,9 @@ export const useNotes = () => {
         resetCurrentNote();
         navigate("/");
         setErrors("");
+        setStatusMessage("Note created");
         setNotes(nextNotes);
+        refreshLocalImportCount();
         return;
       }
 
@@ -207,12 +352,11 @@ export const useNotes = () => {
         return;
       }
 
-      const result = await createNoteRequest(
-        token,
-        parsedNote.data.subject,
-        parsedNote.data.body,
-      );
-      const json = await result.json();
+        const result = await createNoteRequest(
+          token,
+          parsedNote.data,
+        );
+        const json = await result.json();
 
       if (!result.ok) {
         setErrors(json?.message ?? "Failed to create note");
@@ -223,6 +367,12 @@ export const useNotes = () => {
         id: json.noteId,
         subject: parsedNote.data.subject,
         body: parsedNote.data.body,
+        tags: parsedNote.data.tags,
+        folder: parsedNote.data.folder,
+        pinned: parsedNote.data.pinned,
+        isPublic: false,
+        publicId: null,
+        deletedAt: null,
         createdAt: json.createdAt,
         updatedAt: json.updatedAt,
       };
@@ -230,6 +380,7 @@ export const useNotes = () => {
       resetCurrentNote();
       navigate("/");
       setErrors("");
+      setStatusMessage("Note created");
       setNotes((currentNotes) => [nextNote, ...currentNotes]);
     } catch {
       setErrors(
@@ -264,6 +415,9 @@ export const useNotes = () => {
           id: currentNote.id,
           subject: parsedNote.data.subject,
           body: parsedNote.data.body,
+          tags: parsedNote.data.tags,
+          folder: parsedNote.data.folder,
+          pinned: parsedNote.data.pinned,
         });
         const json = await result.json();
 
@@ -286,6 +440,7 @@ export const useNotes = () => {
           updatedAt: json.updatedAt,
         }));
         setErrors("");
+        setStatusMessage("Note updated");
         navigate("/");
         return;
       }
@@ -301,6 +456,9 @@ export const useNotes = () => {
         ...existingNote,
         subject: parsedNote.data.subject,
         body: parsedNote.data.body,
+        tags: parsedNote.data.tags,
+        folder: parsedNote.data.folder,
+        pinned: parsedNote.data.pinned,
         updatedAt: new Date().toISOString(),
       };
       const nextNotes = notes.map((note) =>
@@ -312,7 +470,9 @@ export const useNotes = () => {
       setCurrentNote(updatedNote);
 
       setErrors("");
+      setStatusMessage("Note updated");
       navigate("/");
+      refreshLocalImportCount();
     } catch {
       setErrors(
         isSignedIn ? "Failed to edit account note" : "Failed to edit note",
@@ -324,7 +484,97 @@ export const useNotes = () => {
   }
 
   function resetCurrentNote() {
-    setCurrentNote({ id: "", subject: "", body: "", createdAt: "", updatedAt: "" });
+    setCurrentNote(createEmptyNote());
+  }
+
+  async function importLocalNotes() {
+    if (!isSignedIn) {
+      setErrors("Sign in to import browser notes");
+      return;
+    }
+
+    const localNotes = loadNotes();
+
+    if (!localNotes.length) {
+      setErrors("No local notes available to import");
+      return;
+    }
+
+    try {
+      setDisableButtons(true);
+      const token = await getToken();
+
+      if (!token) {
+        setErrors("You need to be signed in to import notes");
+        return;
+      }
+
+      const result = await importNotesRequest(token, localNotes);
+      const json = await result.json();
+
+      if (!result.ok) {
+        setErrors(json?.message ?? "Failed to import notes");
+        return;
+      }
+
+      clearStoredNotes();
+      refreshLocalImportCount();
+      await loadAccountNotes();
+      setErrors("");
+      setStatusMessage(
+        `Imported ${json.imported} note${json.imported === 1 ? "" : "s"}${json.skipped ? `, skipped ${json.skipped} duplicates` : ""}.`,
+      );
+    } catch {
+      setErrors("Failed to import notes");
+    } finally {
+      setDisableButtons(false);
+    }
+  }
+
+  async function toggleNoteSharing(noteId: string, shouldShare: boolean) {
+    if (!isSignedIn) {
+      setErrors("You need to be signed in to share notes");
+      return;
+    }
+
+    try {
+      setDisableButtons(true);
+      const token = await getToken();
+
+      if (!token) {
+        setErrors("You need to be signed in to share notes");
+        return;
+      }
+
+      const result = shouldShare
+        ? await shareNoteRequest(token, noteId)
+        : await unshareNoteRequest(token, noteId);
+      const json = await result.json();
+
+      if (!result.ok) {
+        setErrors(json?.message ?? "Failed to update sharing");
+        return;
+      }
+
+      setNotes((currentNotes) =>
+        currentNotes.map((note) =>
+          note.id === noteId
+            ? {
+                ...note,
+                isPublic: shouldShare,
+                publicId: json.publicId ?? note.publicId,
+                updatedAt: json.updatedAt ?? note.updatedAt,
+              }
+            : note,
+        ),
+      );
+      setErrors("");
+      setStatusMessage(shouldShare ? "Share link enabled" : "Share link disabled");
+    } catch {
+      setErrors("Failed to update sharing");
+    } finally {
+      setDisableButtons(false);
+    }
   }
 
   return {
@@ -335,13 +585,19 @@ export const useNotes = () => {
     loadingMessage,
     setErrors,
     errors,
+    statusMessage,
     setCurrentNote,
     currentNote,
     deleteNote,
+    restoreNote,
+    permanentlyDeleteNote,
     submitDisabled,
     disableButtons,
     fetchNoteById,
     isFetchingNote,
     storageMode,
+    importLocalNotes,
+    localImportCount,
+    toggleNoteSharing,
   };
 };

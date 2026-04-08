@@ -1,6 +1,7 @@
 import express, { NextFunction } from "express";
 import cors from "cors";
 import { Request, Response } from "express";
+import { randomUUID } from "crypto";
 import { pool } from "./db";
 import {
   AuthenticatedRequest,
@@ -8,8 +9,13 @@ import {
   DeleteNoteSchema,
   GetNoteParams,
   getUser,
+  ImportNotesBody,
   PatchNoteBody,
   PatchNoteParams,
+  PermanentDeleteNoteParams,
+  PublicNoteParams,
+  RestoreNoteParams,
+  ShareNoteParams,
 } from "./schemas";
 
 const FRONTEND_URL = process.env.FRONTEND_BASE_URL ?? "http://localhost:5173";
@@ -64,8 +70,15 @@ app.post("/api/auth/notes", async (req: Request, res: Response) => {
 
   try {
     const result = await pool.query(
-      "insert into notes(subject, body, user_id) values ($1, $2, $3) returning id, created_at, updated_at",
-      [parsedBody.data.subject, parsedBody.data.body, user.user.id],
+      "insert into notes(subject, body, folder, pinned, tags, is_public, public_id, user_id) values ($1, $2, $3, $4, $5, false, null, $6) returning id, created_at, updated_at",
+      [
+        parsedBody.data.subject,
+        parsedBody.data.body,
+        parsedBody.data.folder,
+        parsedBody.data.pinned,
+        parsedBody.data.tags,
+        user.user.id,
+      ],
     );
     const row = result.rows[0];
     return res.status(201).json({
@@ -90,10 +103,13 @@ app.patch("/api/auth/notes/:id", async (req: Request, res: Response) => {
 
   try {
     const result = await pool.query(
-      "update notes set updated_at = now(), subject=$1, body=$2 where id=$3 and user_id=$4 returning updated_at",
+      "update notes set updated_at = now(), subject=$1, body=$2, folder=$3, pinned=$4, tags=$5 where id=$6 and user_id=$7 returning updated_at",
       [
         parsedBody.data.subject,
         parsedBody.data.body,
+        parsedBody.data.folder,
+        parsedBody.data.pinned,
+        parsedBody.data.tags,
         parsedParams.data.id,
         user.user.id,
       ],
@@ -109,12 +125,57 @@ app.patch("/api/auth/notes/:id", async (req: Request, res: Response) => {
   }
 });
 
+app.post("/api/auth/notes/import", async (req: Request, res: Response) => {
+  const user = req as AuthenticatedRequest;
+  const parsedBody = ImportNotesBody.safeParse(req.body);
+
+  if (!parsedBody.success) {
+    return res.status(400).json({ message: "Invalid import payload" });
+  }
+
+  let imported = 0;
+  let skipped = 0;
+
+  try {
+    for (const note of parsedBody.data.notes) {
+      const duplicateCheck = await pool.query(
+        "select id from notes where user_id = $1 and subject = $2 and body = $3 and folder = $4 and pinned = $5 and tags = $6 limit 1",
+        [user.user.id, note.subject, note.body, note.folder, note.pinned, note.tags],
+      );
+
+      if (duplicateCheck.rowCount) {
+        skipped += 1;
+        continue;
+      }
+
+      await pool.query(
+        "insert into notes(subject, body, folder, pinned, tags, is_public, public_id, user_id, created_at, updated_at) values ($1, $2, $3, $4, $5, false, null, $6, $7, $8)",
+        [
+          note.subject,
+          note.body,
+          note.folder,
+          note.pinned,
+          note.tags,
+          user.user.id,
+          note.createdAt,
+          note.updatedAt,
+        ],
+      );
+      imported += 1;
+    }
+
+    return res.status(200).json({ imported, skipped });
+  } catch {
+    return res.status(500).json({ message: "Failed to import notes" });
+  }
+});
+
 app.get("/api/auth/notes", async (req: Request, res: Response) => {
   const user = req as AuthenticatedRequest;
 
   try {
     const result = await pool.query(
-      `select id, subject, body, created_at as "createdAt", updated_at as "updatedAt" from notes where user_id=$1 order by updated_at desc`,
+      `select id, subject, body, folder, pinned, tags, is_public as "isPublic", public_id as "publicId", deleted_at as "deletedAt", created_at as "createdAt", updated_at as "updatedAt" from notes where user_id=$1 order by deleted_at asc nulls first, pinned desc, updated_at desc`,
       [user.user.id],
     );
     return res.status(200).json({ rows: result.rows });
@@ -133,7 +194,7 @@ app.get("/api/auth/notes/:id", async (req: Request, res: Response) => {
 
   try {
     const result = await pool.query(
-      `select id, subject, body, created_at as "createdAt", updated_at as "updatedAt" from notes where id=$1 and user_id=$2`,
+      `select id, subject, body, folder, pinned, tags, is_public as "isPublic", public_id as "publicId", deleted_at as "deletedAt", created_at as "createdAt", updated_at as "updatedAt" from notes where id=$1 and user_id=$2`,
       [parsedId.data.id, user.user.id],
     );
 
@@ -147,6 +208,78 @@ app.get("/api/auth/notes/:id", async (req: Request, res: Response) => {
   }
 });
 
+app.post("/api/auth/notes/:id/share", async (req: Request, res: Response) => {
+  const user = req as AuthenticatedRequest;
+  const parsedId = ShareNoteParams.safeParse(req.params);
+
+  if (!parsedId.success) {
+    return res.status(400).json({ message: "Bad note ID" });
+  }
+
+  try {
+    const result = await pool.query(
+      "update notes set is_public = true, public_id = coalesce(public_id, $1), updated_at = now() where id = $2 and user_id = $3 returning public_id as \"publicId\", updated_at as \"updatedAt\"",
+      [randomUUID(), parsedId.data.id, user.user.id],
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Couldn't find note" });
+    }
+
+    return res.status(200).json(result.rows[0]);
+  } catch {
+    return res.status(500).json({ message: "Failed to share note" });
+  }
+});
+
+app.delete("/api/auth/notes/:id/share", async (req: Request, res: Response) => {
+  const user = req as AuthenticatedRequest;
+  const parsedId = ShareNoteParams.safeParse(req.params);
+
+  if (!parsedId.success) {
+    return res.status(400).json({ message: "Bad note ID" });
+  }
+
+  try {
+    const result = await pool.query(
+      "update notes set is_public = false, updated_at = now() where id = $1 and user_id = $2 returning updated_at as \"updatedAt\", public_id as \"publicId\"",
+      [parsedId.data.id, user.user.id],
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Couldn't find note" });
+    }
+
+    return res.status(200).json(result.rows[0]);
+  } catch {
+    return res.status(500).json({ message: "Failed to unshare note" });
+  }
+});
+
+app.get("/api/public/notes/:publicId", async (req: Request, res: Response) => {
+  const parsedId = PublicNoteParams.safeParse(req.params);
+
+  if (!parsedId.success) {
+    return res.status(400).json({ message: "Bad public note ID" });
+  }
+
+  try {
+    const result = await pool.query(
+      `select subject, body, folder, pinned, tags, created_at as "createdAt", updated_at as "updatedAt"
+       from notes where public_id = $1 and is_public = true and deleted_at is null`,
+      [parsedId.data.publicId],
+    );
+
+    if (result.rowCount !== 1) {
+      return res.status(404).json({ message: "Couldn't find public note" });
+    }
+
+    return res.status(200).json(result.rows[0]);
+  } catch {
+    return res.status(500).json({ message: "Couldn't retrieve public note" });
+  }
+});
+
 app.delete("/api/auth/notes/:id", async (req: Request, res: Response) => {
   const user = req as AuthenticatedRequest;
   const parsedId = DeleteNoteSchema.safeParse(req.params);
@@ -157,7 +290,7 @@ app.delete("/api/auth/notes/:id", async (req: Request, res: Response) => {
 
   try {
     const result = await pool.query(
-      "delete from notes where id=$1 and user_id=$2",
+      "update notes set deleted_at = now(), is_public = false, updated_at = now() where id=$1 and user_id=$2 and deleted_at is null",
       [parsedId.data.id, user.user.id],
     );
 
@@ -168,5 +301,56 @@ app.delete("/api/auth/notes/:id", async (req: Request, res: Response) => {
     return res.sendStatus(200);
   } catch {
     return res.status(500).json({ message: "Couldn't delete note" });
+  }
+});
+
+app.post("/api/auth/notes/:id/restore", async (req: Request, res: Response) => {
+  const user = req as AuthenticatedRequest;
+  const parsedId = RestoreNoteParams.safeParse(req.params);
+
+  if (!parsedId.success) {
+    return res.status(400).json({ message: "Bad note ID" });
+  }
+
+  try {
+    const result = await pool.query(
+      `update notes
+       set deleted_at = null, updated_at = now()
+       where id = $1 and user_id = $2 and deleted_at is not null
+       returning deleted_at as "deletedAt", updated_at as "updatedAt"`,
+      [parsedId.data.id, user.user.id],
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Couldn't find note" });
+    }
+
+    return res.status(200).json(result.rows[0]);
+  } catch {
+    return res.status(500).json({ message: "Couldn't restore note" });
+  }
+});
+
+app.delete("/api/auth/notes/:id/permanent", async (req: Request, res: Response) => {
+  const user = req as AuthenticatedRequest;
+  const parsedId = PermanentDeleteNoteParams.safeParse(req.params);
+
+  if (!parsedId.success) {
+    return res.status(400).json({ message: "Bad note ID" });
+  }
+
+  try {
+    const result = await pool.query(
+      "delete from notes where id = $1 and user_id = $2",
+      [parsedId.data.id, user.user.id],
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Couldn't find note" });
+    }
+
+    return res.sendStatus(200);
+  } catch {
+    return res.status(500).json({ message: "Couldn't permanently delete note" });
   }
 });

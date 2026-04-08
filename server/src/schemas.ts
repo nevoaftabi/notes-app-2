@@ -14,9 +14,16 @@ export const DeleteNoteSchema = z.object({
   id: z.uuid(),
 });
 
-export const PatchNoteBody = z.object({
+const BaseNoteFields = {
   subject: z.string().trim().min(1).max(100),
   body: z.string().trim().min(1).max(3000),
+  folder: z.string().trim().max(40),
+  pinned: z.boolean(),
+  tags: z.array(z.string().trim().min(1).max(20)).max(8),
+};
+
+export const PatchNoteBody = z.object({
+  ...BaseNoteFields,
 });
 
 export const GetNoteParams = z.object({
@@ -28,8 +35,36 @@ export const PatchNoteParams = z.object({
 });
 
 export const CreateNoteBody = z.object({
-  subject: z.string().trim().min(1).max(100),
-  body: z.string().trim().min(1).max(3000),
+  ...BaseNoteFields,
+});
+
+export const ShareNoteParams = z.object({
+  id: z.uuid(),
+});
+
+export const RestoreNoteParams = z.object({
+  id: z.uuid(),
+});
+
+export const PermanentDeleteNoteParams = z.object({
+  id: z.uuid(),
+});
+
+export const PublicNoteParams = z.object({
+  publicId: z.uuid(),
+});
+
+export const ImportNotesBody = z.object({
+  notes: z.array(
+    z.object({
+      ...BaseNoteFields,
+      id: z.string(),
+      createdAt: z.string(),
+      updatedAt: z.string(),
+      isPublic: z.boolean().optional(),
+      publicId: z.string().nullable().optional(),
+    }),
+  ).max(100),
 });
 
 export async function getUser(req: Request) {

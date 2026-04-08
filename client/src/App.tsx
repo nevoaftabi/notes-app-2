@@ -1,5 +1,6 @@
 import Notes from "./components/Notes";
 import NoteEditor from "./components/NoteEditor";
+import PublicNote from "./components/PublicNote";
 import { useNotes } from "./hooks/useNotes";
 import { Navigate, Route, Routes } from "react-router";
 
@@ -10,6 +11,7 @@ function App() {
     deleteNote,
     editNote,
     errors,
+    statusMessage,
     loadingMessage,
     notes,
     resetCurrentNote,
@@ -20,6 +22,11 @@ function App() {
     isFetchingNote,
     fetchNoteById,
     storageMode,
+    importLocalNotes,
+    localImportCount,
+    restoreNote,
+    permanentlyDeleteNote,
+    toggleNoteSharing,
   } = useNotes();
 
   return (
@@ -62,6 +69,7 @@ function App() {
           <Notes
             disableButtons={disableButtons}
             errors={errors}
+            statusMessage={statusMessage}
             setErrors={setErrors}
             deleteNote={deleteNote}
             loadingMessage={loadingMessage}
@@ -69,9 +77,15 @@ function App() {
             setCurrentNote={setCurrentNote}
             resetCurrentNote={resetCurrentNote}
             storageMode={storageMode}
+            importLocalNotes={importLocalNotes}
+            localImportCount={localImportCount}
+            restoreNote={restoreNote}
+            permanentlyDeleteNote={permanentlyDeleteNote}
+            toggleNoteSharing={toggleNoteSharing}
           />
         }
       />
+      <Route path="/shared/:publicId" element={<PublicNote />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
