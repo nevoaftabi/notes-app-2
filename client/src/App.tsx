@@ -35,6 +35,7 @@ function App() {
         path="/notes/new"
         element={
           <NoteEditor
+            key="new-note"
             createNote={createNote}
             currentNote={currentNote}
             editNote={editNote}
@@ -51,6 +52,7 @@ function App() {
         path="/notes/:id/edit"
         element={
           <NoteEditor
+            key={`${currentNote.id || "loading-note"}-${currentNote.updatedAt || "draft"}`}
             createNote={createNote}
             currentNote={currentNote}
             editNote={editNote}

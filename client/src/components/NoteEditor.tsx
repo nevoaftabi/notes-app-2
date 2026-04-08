@@ -33,10 +33,6 @@ function NoteEditor({
   const [tagInputs, setTagInputs] = useState<string[]>(currentNote.tags);
 
   useEffect(() => {
-    setTagInputs(currentNote.tags);
-  }, [currentNote.id]);
-
-  useEffect(() => {
     if (!id || isFetchingNote) return;
 
     const parsedId = z.uuid().safeParse(id);
