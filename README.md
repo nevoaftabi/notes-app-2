@@ -2,7 +2,7 @@
 
 A full-stack notes application built with React, TypeScript, Express, PostgreSQL, Clerk, and `localStorage`.
 
-Live demo: https://notes-app-client-bice.vercel.app/
+Live demo: https://notes-app-client-nevoaftabis-projects.vercel.app/
 
 ## Technologies Used
 
