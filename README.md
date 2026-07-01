@@ -2,7 +2,7 @@
 
 A full-stack notes application built with React, TypeScript, Express, PostgreSQL, Clerk, and `localStorage`.
 
-Live demo: https://client-five-gray-80.vercel.app/
+Live demo: https://weather-app-client-20260325123257.vercel.app/
 
 ## Technologies Used
 
